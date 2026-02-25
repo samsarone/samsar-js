@@ -1,0 +1,38 @@
+{
+  "name": "samsar-js",
+  "version": "0.48.0",
+  "description": "TypeScript client for the Samsar Processor API routes.",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "pack": "npm pack"
+  },
+  "keywords": [
+    "samsar",
+    "video",
+    "image",
+    "chat",
+    "api",
+    "client"
+  ],
+  "author": "",
+  "license": "ISC",
+  "engines": {
+    "node": ">=18"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.0"
+  }
+}
