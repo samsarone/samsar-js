@@ -4,9 +4,22 @@ TypeScript/ESM client for the Samsar Processor public API (`https://api.samsar.o
 
 ## Installation
 
+Requires Node.js `>=18`.
+
 ```bash
 npm install samsar-js
-# or from a private registry
+```
+
+```bash
+yarn add samsar-js
+```
+
+```bash
+pnpm add samsar-js
+```
+
+```bash
+# optional: install from a private registry mirror
 npm install samsar-js --registry <your-registry-url>
 ```
 
@@ -231,3 +244,17 @@ npm publish --registry <your-registry-url>
 ```
 
 Ensure `package.json` name/version are set as desired before publishing.
+
+## Maintainer Deploy Script
+
+`deploy.sh` publishes the current package to npm using `NPM_TOKEN` from env (or `.env`).
+
+```bash
+# publish current version
+./deploy.sh
+
+# bump version, then publish
+./deploy.sh patch
+./deploy.sh minor
+./deploy.sh major
+```
