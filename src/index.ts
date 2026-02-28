@@ -599,6 +599,80 @@ export interface ExtendImageListResponse {
   [key: string]: unknown;
 }
 
+export interface ReceiptTemplateRoi {
+  id: string;
+  label: string;
+  purpose?: string | null;
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
+export interface ReceiptTemplateField {
+  key: string;
+  label: string;
+  type: string;
+  required: boolean;
+  roi_id?: string | null;
+  description?: string | null;
+}
+
+export interface ReceiptTemplateDefinition {
+  schema_version?: string;
+  merchant_hint?: string | null;
+  language_hint?: string | null;
+  currency_hint?: string | null;
+  rois?: ReceiptTemplateRoi[];
+  fields?: ReceiptTemplateField[];
+  validation_rules?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface CreateReceiptTemplateRequest {
+  image_url: string;
+  template_name?: string;
+}
+
+export interface CreateReceiptTemplateResponse {
+  template_id: string;
+  template_hash?: string;
+  template_name?: string | null;
+  normalized_template?: ReceiptTemplateDefinition;
+  sample_receipt?: Record<string, unknown>;
+  created_at?: string;
+  [key: string]: unknown;
+}
+
+export interface QueryReceiptTemplateRequest {
+  image_url: string;
+  template_id: string;
+}
+
+export interface QueryReceiptTemplateResponse {
+  template_id: string;
+  template_hash?: string;
+  template_name?: string | null;
+  normalized_template?: ReceiptTemplateDefinition;
+  receipt_json?: Record<string, unknown>;
+  standardized_receipt?: Record<string, unknown>;
+  items?: Array<Record<string, unknown>>;
+  unreadable_fields?: string[];
+  confidence?: number;
+  validation?: {
+    is_valid?: boolean;
+    issues?: string[];
+    missing_required_fields?: string[];
+    type_mismatch_fields?: string[];
+    arithmetic?: Record<string, unknown>;
+    [key: string]: unknown;
+  };
+  attempts?: number;
+  creditsCharged?: number;
+  remainingCredits?: number | null;
+  [key: string]: unknown;
+}
+
 export interface RollupBannerOverlay {
   footer?: string | null;
   bottom?: string | null;
@@ -1659,6 +1733,28 @@ export class SamsarClient {
     options?: SamsarRequestOptions,
   ): Promise<SamsarResult<ExtendImageListResponse>> {
     return this.post<ExtendImageListResponse>('image/add_image_set', payload, options);
+  }
+
+  /**
+   * Create and save a reusable receipt extraction template from a sample receipt image.
+   * This endpoint is free and does not deduct credits.
+   */
+  async createReceiptTemplate(
+    payload: CreateReceiptTemplateRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<CreateReceiptTemplateResponse>> {
+    return this.post<CreateReceiptTemplateResponse>('image/receipt_templates/create', payload, options);
+  }
+
+  /**
+   * Extract standardized receipt JSON by validating a receipt image against a saved template.
+   * This endpoint charges 50 credits per request.
+   */
+  async queryReceiptTemplate(
+    payload: QueryReceiptTemplateRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<QueryReceiptTemplateResponse>> {
+    return this.post<QueryReceiptTemplateResponse>('image/receipt_templates/query', payload, options);
   }
 
   /**

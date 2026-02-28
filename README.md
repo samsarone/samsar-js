@@ -155,6 +155,19 @@ const images = await samsar.extendImageList({
   num_images: 4,
 });
 
+// Create a reusable receipt template from one sample receipt image (free endpoint)
+const receiptTemplate = await samsar.createReceiptTemplate({
+  image_url: 'https://example.com/receipt-template.png',
+  template_name: 'kbank-transfer-template',
+});
+
+// Query a new receipt against the saved template (50 credits/request)
+const receiptResult = await samsar.queryReceiptTemplate({
+  image_url: 'https://example.com/receipt-instance.png',
+  template_id: receiptTemplate.data.template_id,
+});
+console.log(receiptResult.data.receipt_json, receiptResult.creditsCharged);
+
 // Enhance low-res images (if needed) and generate a roll-up banner
 const rollup = await samsar.enhanceAndGenerateRollupBanner({
   images: [
@@ -208,6 +221,7 @@ console.log(paymentStatus.data.status);
 ```
 
 Video model support notes:
+- `createVideoFromText` image model keys include: `GPTIMAGE1`, `IMAGEN4`, `SEEDREAM`, `HUNYUAN`, `NANOBANANA2`.
 - `createVideoFromText` supports all express video models: `RUNWAYML`, `KLINGIMGTOVID3PRO`, `HAILUO`, `HAILUOPRO`, `SEEDANCEI2V`, `VEO3.1I2V`, `VEO3.1I2VFAST`, `SORA2`, `SORA2PRO`.
 - `createVideoFromImageList` uses a fixed Veo2.1 pipeline model (`VEO3.1I2V`) and does not accept a `video_model` override.
 
@@ -217,6 +231,7 @@ Each method returns `{ data, status, headers, creditsCharged, creditsRemaining, 
 
 - Embedding endpoints (`createEmbedding`, `updateEmbedding`, `searchAgainstEmbedding`, `similarToEmbedding`) are billed by input tokens at $1 per million tokens. `deleteEmbeddings` does not consume tokens.
 - Token counts follow OpenAI tokenization for `text-embedding-3-large`. Credit deductions follow the existing 100 credits per USD rule.
+- Receipt template creation (`createReceiptTemplate`) is free; receipt template query (`queryReceiptTemplate`) costs 50 credits per request.
 
 ## Configuration
 
