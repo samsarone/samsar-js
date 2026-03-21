@@ -1,6 +1,6 @@
 # samsar-js
 
-TypeScript/ESM client for the Samsar Processor public API (`https://api.samsar.one/v1`). It mirrors the OpenAI-style ergonomics for creating videos, enhancing chat messages, and managing image operations.
+TypeScript/ESM client for the Samsar Processor public API (`https://api.samsar.one/v1`). It mirrors OpenAI-style ergonomics for creating videos, enhancing copy, running assistant completions, and managing image operations.
 
 ## Installation
 
@@ -95,6 +95,41 @@ console.log(cancelled.data.status, cancelled.data.cancelled);
 // Enhance chat message
 const enhanced = await samsar.enhanceMessage({ message: 'Please improve this caption.' });
 
+// Set an account-level assistant system prompt
+await samsar.setAssistantSystemPrompt({
+  system_prompt: 'You are the brand assistant for Acme. Keep answers concise and commercially practical.',
+});
+
+// Create an assistant completion for an existing session
+const assistant = await samsar.createAssistantCompletion({
+  session_id: videoFromImages.data.session_id ?? videoFromImages.data.request_id!,
+  input: [
+    {
+      role: 'user',
+      content: [
+        { type: 'input_text', text: 'Write a launch caption for this session.' },
+      ],
+    },
+  ],
+  max_output_tokens: 300,
+});
+console.log(assistant.data.output_text);
+
+// Generate an image in the assistant response using the OpenAI-compatible image_generation tool
+const assistantImage = await samsar.createAssistantCompletion({
+  session_id: videoFromImages.data.session_id ?? videoFromImages.data.request_id!,
+  input: 'Create a clean launch poster image for this session.',
+  tools: [{ type: 'image_generation', size: '1024x1024', quality: 'high' }],
+  tool_choice: { type: 'image_generation' },
+});
+const generatedImage = assistantImage.data.output?.find(
+  (item) => item.type === 'image_generation_call' && typeof item.result === 'string',
+);
+console.log(generatedImage?.result); // base64 image payload
+
+// Continue the same multimodal assistant thread by reusing the same session_id.
+// Samsar preserves the underlying OpenAI response chain for follow-up image edits.
+
 // Create embeddings from a JSON array
 const embedding = await samsar.createEmbedding({
   name: 'listings',
@@ -111,6 +146,17 @@ const embedding = await samsar.createEmbedding({
 
 // field_options controls which fields are embedded, used for structured filters, and returned in raw results.
 // Use dot-notated paths (e.g. owner.email) or inline wrappers like { value, searchable, filterable, retrievable }.
+
+// Create embeddings from one URL or a URL list
+const websiteEmbedding = await samsar.createEmbeddingFromUrl({
+  name: 'product-docs',
+  urls: [
+    'https://example.com/docs/getting-started',
+    'https://example.com/docs/pricing',
+  ],
+});
+
+// The generic createEmbedding wrapper also accepts `urls` on the same route if you prefer one entrypoint.
 
 // Search against an embedding template
 const search = await samsar.searchAgainstEmbedding({
@@ -160,6 +206,10 @@ const receiptTemplate = await samsar.createReceiptTemplate({
   image_url: 'https://example.com/receipt-template.png',
   template_name: 'kbank-transfer-template',
 });
+
+// Fetch the structured template JSON for a saved template (free endpoint)
+const receiptTemplateJson = await samsar.getReceiptTemplateJson(receiptTemplate.data.template_id);
+console.log(receiptTemplateJson.data.template_json);
 
 // Query a new receipt against the saved template (50 credits/request)
 const receiptResult = await samsar.queryReceiptTemplate({
@@ -220,6 +270,89 @@ const paymentStatus = await samsar.getPaymentStatus({
 console.log(paymentStatus.data.status);
 ```
 
+## External users
+
+Use the external-user surface when many platform users share one central Samsar account and API key.
+
+```ts
+import SamsarClient from 'samsar-js';
+
+const platform = new SamsarClient({
+  apiKey: process.env.SAMSAR_PLATFORM_API_KEY!,
+});
+
+const externalUser = {
+  provider: 'whop',
+  external_user_id: 'usr_123',
+  external_app_id: 'app_abc',
+  username: 'roy24x7',
+};
+
+// Bootstrap or refresh the external user
+const externalSession = await platform.createExternalUserSession(externalUser);
+console.log(externalSession.data.remainingCredits, externalSession.data.external_api_key);
+
+// Store an external-user-specific assistant prompt
+await platform.setExternalAssistantSystemPrompt(
+  {
+    system_prompt: 'You are the storefront assistant for this creator. Keep answers short, commercial, and visually aware.',
+  },
+  externalUser,
+);
+
+// Create a render attributed to that external user
+const externalRender = await platform.createExternalVideoFromText(externalUser, {
+  prompt: 'A sleek teaser for a futuristic running shoe',
+  image_model: 'GPTIMAGE1',
+  video_model: 'RUNWAYML',
+  duration: 10,
+  enable_subtitles: true,
+});
+
+// Run an assistant completion against one of that external user's sessions.
+// Credits are deducted from the external user, while the owning Samsar account model config is used internally.
+const externalAssistant = await platform.createExternalAssistantCompletion(
+  {
+    session_id: externalRender.data.request_id,
+    input: 'Write a product caption for this video and suggest a headline.',
+    max_output_tokens: 250,
+  },
+  externalUser,
+);
+console.log(externalAssistant.data.output_text);
+
+// Fetch their external library
+const library = await platform.listExternalUserRequests(externalUser, { limit: 12 });
+console.log(library.data.requests.length);
+
+// Publish or archive a render
+await platform.publishExternalUserRequest(externalRender.data.request_id, {
+  title: 'Running shoe teaser',
+}, externalUser);
+await platform.archiveExternalUserRequest(externalRender.data.request_id, externalUser);
+
+// Create a short-lived login URL for the external Studio dashboard
+const login = await platform.createExternalUserLoginToken(externalUser, {
+  redirect: '/external/studio',
+});
+console.log(login.data.loginUrl);
+
+// Exchange the login token for a client auth token
+const verified = await platform.verifyClientSession({
+  loginToken: login.data.loginToken,
+});
+
+// The returned authToken can be used as the SDK apiKey for external-user routes
+const externalClient = new SamsarClient({
+  apiKey: verified.data.authToken!,
+});
+await externalClient.setExternalAssistantSystemPrompt({
+  system_prompt: 'You are my personal launch assistant. Stay concise and actionable.',
+});
+const externalLibrary = await externalClient.listExternalUserRequests();
+console.log(externalLibrary.data.requests.map((request) => request.request_id));
+```
+
 Video model support notes:
 - `createVideoFromText` image model keys include: `GPTIMAGE1`, `IMAGEN4`, `SEEDREAM`, `HUNYUAN`, `NANOBANANA2`.
 - `createVideoFromText` supports all express video models: `RUNWAYML`, `KLINGIMGTOVID3PRO`, `HAILUO`, `HAILUOPRO`, `SEEDANCEI2V`, `VEO3.1I2V`, `VEO3.1I2VFAST`, `SORA2`, `SORA2PRO`.
@@ -229,9 +362,11 @@ Each method returns `{ data, status, headers, creditsCharged, creditsRemaining, 
 
 ## Billing notes
 
+- Assistant completions are billed from actual request usage. Samsar measures the processed input and generated output, converts usage to credits using the standard `100 credits = $1` rule, and applies a `2.5x` assistant multiplier so text-only and multimodal sessions are priced consistently.
 - Embedding endpoints (`createEmbedding`, `updateEmbedding`, `searchAgainstEmbedding`, `similarToEmbedding`) are billed by input tokens at $1 per million tokens. `deleteEmbeddings` does not consume tokens.
-- Token counts follow OpenAI tokenization for `text-embedding-3-large`. Credit deductions follow the existing 100 credits per USD rule.
-- Receipt template creation (`createReceiptTemplate`) is free; receipt template query (`queryReceiptTemplate`) costs 50 credits per request.
+- URL-based embedding creation (`createEmbedding` with `urls`, or `createEmbeddingFromUrl`) adds Firecrawl crawl cost to the embedding token cost, then applies Samsar's 100 credits per USD mapping with a `2.5x` multiplier.
+- Token-based routes scale with the amount of content processed. Larger prompts, longer responses, and richer inputs use more credits than short text-only requests.
+- Receipt template creation (`createReceiptTemplate`) and template JSON lookup (`getReceiptTemplateJson`) are free; receipt template query (`queryReceiptTemplate`) costs 50 credits per request.
 
 ## Configuration
 
@@ -240,6 +375,7 @@ Each method returns `{ data, status, headers, creditsCharged, creditsRemaining, 
 - `timeoutMs` (optional): defaults to 30s.
 - `fetch` (optional): supply a fetch implementation when not available globally (e.g., Node <18).
 - `defaultHeaders` (optional): merged into every request.
+- `externalUserApiKey` (optional): default `x-external-user-api-key` header for external-user scoped requests.
 
 ## Build
 

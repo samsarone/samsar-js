@@ -7,7 +7,7 @@ cd "$ROOT_DIR"
 TMP_FILES=()
 cleanup_tmp_files() {
   local tmp_file
-  for tmp_file in "${TMP_FILES[@]}"; do
+  for tmp_file in "${TMP_FILES[@]-}"; do
     [[ -n "$tmp_file" ]] && rm -f "$tmp_file"
   done
 }
@@ -23,6 +23,11 @@ contains_element() {
     fi
   done
   return 1
+}
+
+is_exact_version_spec() {
+  local spec="$1"
+  [[ "${spec}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?(\+[0-9A-Za-z.-]+)?$ ]]
 }
 
 # Load env vars from .env when present (used for NPM_TOKEN and deploy options).
@@ -286,6 +291,7 @@ NODE
 
   local manifest_path project_dir lock_file repo_root
   local install_attempt install_max_attempts install_retry_delay
+  local -a npm_install_args
   install_max_attempts="${GUIDESTINATION_INSTALL_RETRIES:-8}"
   install_retry_delay="${GUIDESTINATION_INSTALL_RETRY_DELAY_SECONDS:-5}"
 
@@ -298,12 +304,19 @@ NODE
     project_dir="$(dirname "${manifest_path}")"
 
     if [[ -f "${project_dir}/package-lock.json" ]]; then
+      npm_install_args=(
+        --prefix "${project_dir}"
+        --ignore-scripts
+        --registry "${REGISTRY}"
+      )
+      if is_exact_version_spec "${dependency_spec}"; then
+        npm_install_args+=(--save-exact)
+      fi
+
       install_attempt=1
       while true; do
         if npm install \
-          --prefix "${project_dir}" \
-          --ignore-scripts \
-          --registry "${REGISTRY}" \
+          "${npm_install_args[@]}" \
           "${PACKAGE_NAME}@${dependency_spec}"; then
           break
         fi
@@ -326,7 +339,7 @@ NODE
     fi
 
     repo_root="$(git -C "${project_dir}" rev-parse --show-toplevel 2>/dev/null || true)"
-    if [[ -n "${repo_root}" ]] && ! contains_element "${repo_root}" "${GUIDESTINATION_REPO_ROOTS[@]}"; then
+    if [[ -n "${repo_root}" ]] && ! contains_element "${repo_root}" "${GUIDESTINATION_REPO_ROOTS[@]-}"; then
       GUIDESTINATION_REPO_ROOTS+=("${repo_root}")
     fi
   done < "${manifest_list_file}"
@@ -457,9 +470,9 @@ else
 fi
 
 if [[ "${GIT_PUSH_GUIDESTINATION}" == "1" && "${#GUIDESTINATION_REPO_ROOTS[@]}" -gt 0 ]]; then
-  for repo_root in "${GUIDESTINATION_REPO_ROOTS[@]}"; do
+  for repo_root in "${GUIDESTINATION_REPO_ROOTS[@]-}"; do
     repo_files=()
-    for synced_file in "${GUIDESTINATION_SYNCED_FILES[@]}"; do
+    for synced_file in "${GUIDESTINATION_SYNCED_FILES[@]-}"; do
       if [[ "${synced_file}" == "${repo_root}/"* ]]; then
         repo_files+=("${synced_file#"${repo_root}/"}")
       fi

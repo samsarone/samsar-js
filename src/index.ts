@@ -14,11 +14,13 @@ export interface SamsarClientOptions {
   timeoutMs?: number;
   fetch?: FetchLike;
   defaultHeaders?: Record<string, string>;
+  externalUserApiKey?: string;
 }
 
 export interface SamsarRequestOptions {
   idempotencyKey?: string;
   headers?: Record<string, string>;
+  externalUserApiKey?: string;
   signal?: AbortSignal;
   query?: QueryParams;
 }
@@ -332,6 +334,124 @@ export interface EnhanceMessageResponse {
   [key: string]: unknown;
 }
 
+export type AssistantInputContentItem =
+  | {
+      type: 'input_text' | 'text';
+      text: string;
+      [key: string]: unknown;
+    }
+  | {
+      type: 'input_image' | 'image_url' | 'image';
+      image_url?: string;
+      url?: string;
+      [key: string]: unknown;
+    }
+  | Record<string, unknown>;
+
+export interface AssistantInputMessage {
+  role: 'user' | 'assistant' | 'developer' | 'system';
+  content: string | AssistantInputContentItem[];
+  [key: string]: unknown;
+}
+
+export interface AssistantReasoningConfig {
+  effort?: 'low' | 'medium' | 'high' | string;
+  [key: string]: unknown;
+}
+
+export interface AssistantImageGenerationTool {
+  type: 'image_generation';
+  size?: string;
+  quality?: 'auto' | 'low' | 'medium' | 'high' | string;
+  format?: 'png' | 'jpeg' | 'webp' | string;
+  background?: 'auto' | 'transparent' | 'opaque' | string;
+  compression?: number;
+  partial_images?: number;
+  action?: 'auto' | 'generate' | 'edit' | string;
+  [key: string]: unknown;
+}
+
+export type AssistantToolDefinition = AssistantImageGenerationTool | Record<string, unknown>;
+
+export type AssistantToolChoice =
+  | 'auto'
+  | 'none'
+  | 'required'
+  | {
+      type?: string;
+      [key: string]: unknown;
+    }
+  | Record<string, unknown>;
+
+export interface AssistantSetSystemPromptRequest {
+  system_prompt?: string | null;
+  systemPrompt?: string | null;
+  prompt?: string | null;
+  value?: string | null;
+}
+
+export interface AssistantSetSystemPromptResponse {
+  system_prompt: string | null;
+  model?: string;
+  selected_assistant_model?: string;
+  [key: string]: unknown;
+}
+
+export interface AssistantCompletionRequest {
+  session_id?: string;
+  sessionId?: string;
+  id?: string;
+  previous_response_id?: string;
+  previousResponseId?: string;
+  input?: string | AssistantInputMessage | AssistantInputMessage[] | AssistantInputContentItem[];
+  message?: string | AssistantInputMessage | AssistantInputMessage[] | AssistantInputContentItem[];
+  messages?: AssistantInputMessage[];
+  max_output_tokens?: number;
+  maxOutputTokens?: number;
+  max_tokens?: number;
+  temperature?: number;
+  top_p?: number;
+  metadata?: Record<string, unknown>;
+  user?: string;
+  text?: Record<string, unknown>;
+  tools?: AssistantToolDefinition[];
+  tool_choice?: AssistantToolChoice;
+  parallel_tool_calls?: boolean;
+  reasoning?: AssistantReasoningConfig;
+  reasoning_effort?: 'low' | 'medium' | 'high' | string;
+  [key: string]: unknown;
+}
+
+export interface AssistantResponseContentItem {
+  type?: string;
+  text?: string;
+  annotations?: unknown[];
+  [key: string]: unknown;
+}
+
+export interface AssistantResponseOutputItem {
+  id?: string;
+  type?: string;
+  role?: string;
+  content?: AssistantResponseContentItem[];
+  status?: string;
+  revised_prompt?: string;
+  result?: string;
+  [key: string]: unknown;
+}
+
+export interface AssistantCompletionResponse {
+  id?: string;
+  object?: string;
+  created_at?: number;
+  status?: string;
+  model?: string;
+  output_text?: string;
+  output?: AssistantResponseOutputItem[];
+  usage?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
 export interface EmbeddingStructuredField {
   key: string;
   type: string;
@@ -344,6 +464,8 @@ export interface EmbeddingFieldOptions {
   filterable?: boolean;
   retrievable?: boolean;
 }
+
+export type EmbeddingUrlInput = string | string[];
 
 export type EmbeddingFieldOptionsInput =
   | Record<string, EmbeddingFieldOptions>
@@ -358,8 +480,27 @@ export type EmbeddingFieldOptionsInput =
       }
     >;
 
+export interface EmbeddingUrlIssue {
+  url?: string | null;
+  message?: string;
+  code?: string | null;
+}
+
 export interface CreateEmbeddingRequest {
-  records: Array<Record<string, unknown>>;
+  records?: Array<Record<string, unknown>>;
+  urls?: EmbeddingUrlInput;
+  url?: string;
+  name?: string;
+  embedding_name?: string;
+  template_name?: string;
+  field_options?: EmbeddingFieldOptionsInput;
+  fieldOptions?: EmbeddingFieldOptionsInput;
+  [key: string]: unknown;
+}
+
+export interface CreateEmbeddingFromUrlRequest {
+  urls?: EmbeddingUrlInput;
+  url?: string;
   name?: string;
   embedding_name?: string;
   template_name?: string;
@@ -373,6 +514,11 @@ export interface CreateEmbeddingResponse {
   template_hash?: string;
   hash_link?: string;
   record_count?: number;
+  input_url_count?: number;
+  processed_url_count?: number;
+  firecrawl_credits_used?: number;
+  skipped_urls?: EmbeddingUrlIssue[];
+  crawl_errors?: EmbeddingUrlIssue[];
   structured_fields?: EmbeddingStructuredField[];
   unstructured_fields?: string[];
   [key: string]: unknown;
@@ -630,8 +776,14 @@ export interface ReceiptTemplateDefinition {
 }
 
 export interface CreateReceiptTemplateRequest {
-  image_url: string;
+  image_url?: string;
+  imageUrl?: string;
+  receipt_url?: string;
+  receiptUrl?: string;
+  template_url?: string;
+  templateUrl?: string;
   template_name?: string;
+  templateName?: string;
 }
 
 export interface CreateReceiptTemplateResponse {
@@ -645,8 +797,14 @@ export interface CreateReceiptTemplateResponse {
 }
 
 export interface QueryReceiptTemplateRequest {
-  image_url: string;
-  template_id: string;
+  image_url?: string;
+  imageUrl?: string;
+  receipt_url?: string;
+  receiptUrl?: string;
+  template_id?: string;
+  templateId?: string;
+  receipt_template_id?: string;
+  receiptTemplateId?: string;
 }
 
 export interface QueryReceiptTemplateResponse {
@@ -670,6 +828,20 @@ export interface QueryReceiptTemplateResponse {
   attempts?: number;
   creditsCharged?: number;
   remainingCredits?: number | null;
+  [key: string]: unknown;
+}
+
+export interface GetReceiptTemplateJsonResponse {
+  template_id: string;
+  template_hash?: string;
+  template_name?: string | null;
+  source_image_url?: string | null;
+  normalized_template?: ReceiptTemplateDefinition;
+  template_json?: ReceiptTemplateDefinition;
+  sample_receipt?: Record<string, unknown>;
+  provider?: Record<string, unknown> | null;
+  created_at?: string | null;
+  updated_at?: string | null;
   [key: string]: unknown;
 }
 
@@ -810,6 +982,172 @@ export interface GlobalStatusResponse {
   [key: string]: unknown;
 }
 
+export interface ExternalUserIdentity {
+  provider: string;
+  external_user_id?: string;
+  externalUserId?: string;
+  external_app_id?: string;
+  externalAppId?: string;
+  external_company_id?: string;
+  externalCompanyId?: string;
+  external_account_id?: string;
+  externalAccountId?: string;
+  email?: string;
+  username?: string;
+  display_name?: string;
+  displayName?: string;
+  avatar_url?: string;
+  avatarUrl?: string;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface ExternalUserSummary {
+  id?: string | null;
+  provider?: string;
+  external_user_id?: string;
+  external_app_id?: string | null;
+  external_company_id?: string | null;
+  email?: string | null;
+  username?: string | null;
+  display_name?: string | null;
+  avatar_url?: string | null;
+  generation_credits?: number;
+  has_external_api_key?: boolean;
+  external_api_key_created_at?: string | null;
+  external_api_key_last_used_at?: string | null;
+  total_requests?: number;
+  total_credits_used?: number;
+  total_credits_refunded?: number;
+  total_credits_purchased?: number;
+  last_request_at?: string | null;
+  last_purchase_at?: string | null;
+  last_activity_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  [key: string]: unknown;
+}
+
+export interface ExternalRequestResponse {
+  request_id: string;
+  session_id?: string;
+  external_request_id?: string;
+  external_session_id?: string;
+  upstream_request_id?: string | null;
+  upstream_session_id?: string | null;
+  status_endpoint?: string;
+  external_user?: ExternalUserSummary | null;
+  creditsCharged?: number;
+  creditsRefunded?: number;
+  remainingCredits?: number | null;
+  [key: string]: unknown;
+}
+
+export interface ExternalCreditsBalanceResponse extends CreditsBalanceResponse {
+  externalUser?: ExternalUserSummary | null;
+  external_user?: ExternalUserSummary | null;
+}
+
+export interface ExternalUserSessionResponse extends ExternalCreditsBalanceResponse {
+  external_api_key?: string | null;
+  external_user?: ExternalUserSummary | null;
+  externalUser?: ExternalUserSummary | null;
+}
+
+export interface ExternalCreditsGrantResponse {
+  creditsGranted: number;
+  remainingCredits: number;
+  internalRemainingCredits?: number | null;
+  externalUser?: ExternalUserSummary | null;
+  external_user?: ExternalUserSummary | null;
+  [key: string]: unknown;
+}
+
+export interface ExternalCreditsRechargeResponse extends CreditsRechargeResponse {
+  external_payment_id?: string;
+  external_user?: ExternalUserSummary | null;
+  externalUser?: ExternalUserSummary | null;
+}
+
+export interface ExternalPaymentStatusRequest extends PaymentStatusRequest {
+  external_payment_id?: string;
+  externalPaymentId?: string;
+}
+
+export interface ExternalPaymentStatusResponse extends PaymentStatusResponse {
+  external_payment_id?: string;
+  external_user?: ExternalUserSummary | null;
+  externalUser?: ExternalUserSummary | null;
+  remainingCredits?: number | null;
+  lastTopUp?: CreditTopUpSummary | null;
+}
+
+export interface ExternalStatusResponse extends GlobalStatusResponse {
+  external_request_id?: string;
+  external_session_id?: string;
+  upstream_request_id?: string | null;
+  upstream_session_id?: string | null;
+  external_user?: ExternalUserSummary | null;
+  creditsRefunded?: number;
+  remainingCredits?: number | null;
+}
+
+export interface ExternalRequestSummary {
+  request_id?: string;
+  external_request_id?: string;
+  upstream_request_id?: string | null;
+  upstream_session_id?: string | null;
+  route_key?: string | null;
+  status?: string | null;
+  prompt?: string | null;
+  video_url?: string | null;
+  image_count?: number;
+  credits_charged?: number;
+  credits_refunded?: number;
+  remaining_credits?: number | null;
+  target_language?: string | null;
+  source_request_ids?: string[];
+  source_session_ids?: string[];
+  created_at?: string | null;
+  updated_at?: string | null;
+  is_published?: boolean;
+  published_title?: string | null;
+  published_description?: string | null;
+  published_tags?: string[];
+  published_at?: string | null;
+  published_video_url?: string | null;
+  published_publication_id?: string | null;
+  [key: string]: unknown;
+}
+
+export interface ExternalRequestsListResponse {
+  requests: ExternalRequestSummary[];
+  external_user?: ExternalUserSummary | null;
+  externalUser?: ExternalUserSummary | null;
+  [key: string]: unknown;
+}
+
+export interface ExternalArchiveResponse {
+  request?: ExternalRequestSummary | null;
+  external_user?: ExternalUserSummary | null;
+  externalUser?: ExternalUserSummary | null;
+  [key: string]: unknown;
+}
+
+export interface ExternalPublishInput {
+  title?: string;
+  description?: string;
+  tags?: string[] | string;
+  aspectRatio?: string;
+  sessionLanguage?: string;
+  languageString?: string;
+  [key: string]: unknown;
+}
+
+export interface ExternalPublishResponse extends ExternalArchiveResponse {
+  publication?: Record<string, unknown> | null;
+}
+
 export interface CreditTopUpSummary {
   id?: string;
   amountPaidCents?: number;
@@ -839,6 +1177,47 @@ export interface CreateLoginTokenResponse {
   loginToken: string;
   expiresInSeconds?: number;
   expiresAt?: string;
+  [key: string]: unknown;
+}
+
+export interface ExternalCreateLoginTokenResponse extends CreateLoginTokenResponse {
+  loginUrl?: string;
+  external_user?: ExternalUserSummary | null;
+  externalUser?: ExternalUserSummary | null;
+}
+
+export interface ExternalAssistantSetSystemPromptResponse extends AssistantSetSystemPromptResponse {
+  external_user?: ExternalUserSummary | null;
+  externalUser?: ExternalUserSummary | null;
+}
+
+export interface VerifyClientSessionInput {
+  loginToken?: string;
+  authToken?: string;
+}
+
+export interface VerifiedClientSessionResponse {
+  authToken?: string;
+  isExternalUser?: boolean;
+  _id?: string | null;
+  email?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  avatarUrl?: string | null;
+  provider?: string | null;
+  externalUserId?: string | null;
+  externalAppId?: string | null;
+  externalCompanyId?: string | null;
+  generationCredits?: number;
+  totalRequests?: number;
+  totalCreditsUsed?: number;
+  totalCreditsRefunded?: number;
+  totalCreditsPurchased?: number;
+  lastRequestAt?: string | null;
+  lastPurchaseAt?: string | null;
+  lastActivityAt?: string | null;
+  createdAt?: string | null;
+  updatedAt?: string | null;
   [key: string]: unknown;
 }
 
@@ -961,6 +1340,7 @@ export class SamsarClient {
   private readonly timeoutMs: number;
   private readonly fetchFn: FetchLike;
   private readonly defaultHeaders: Record<string, string>;
+  private readonly externalUserApiKey?: string;
 
   constructor(options: SamsarClientOptions) {
     if (!options?.apiKey) {
@@ -972,6 +1352,7 @@ export class SamsarClient {
     this.timeoutMs = options.timeoutMs ?? 30000;
     this.fetchFn = options.fetch ?? (globalThis.fetch as FetchLike);
     this.defaultHeaders = options.defaultHeaders ?? {};
+    this.externalUserApiKey = options.externalUserApiKey?.trim() || undefined;
 
     if (typeof this.fetchFn !== 'function') {
       throw new Error(
@@ -1036,6 +1417,143 @@ export class SamsarClient {
     }
 
     return response;
+  }
+
+  /**
+   * Create a text-to-video request attributed to an external user while billing against the shared API key.
+   */
+  async createExternalVideoFromText(
+    externalUser: ExternalUserIdentity,
+    input: CreateVideoFromTextInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalRequestResponse>> {
+    const body = {
+      external_user: normalizeExternalUserIdentity(externalUser),
+      input,
+      webhookUrl: options?.webhookUrl,
+    };
+
+    return this.post<ExternalRequestResponse>('external_users/text_to_video', body, options);
+  }
+
+  /**
+   * Upload image data URLs for an external user before calling createExternalVideoFromImageList.
+   */
+  async uploadExternalImageData(
+    externalUser: ExternalUserIdentity,
+    imageData: string[],
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<{ image_urls: string[] }>> {
+    if (!Array.isArray(imageData) || imageData.length === 0) {
+      throw new Error('imageData must be a non-empty array of data URLs');
+    }
+
+    const body = {
+      external_user: normalizeExternalUserIdentity(externalUser),
+      input: {
+        image_data: imageData,
+      },
+    };
+
+    return this.post<{ image_urls: string[] }>('external_users/upload_image_data', body, options);
+  }
+
+  /**
+   * Create an image-list-to-video request attributed to an external user while billing against the shared API key.
+   */
+  async createExternalVideoFromImageList(
+    externalUser: ExternalUserIdentity,
+    input: CreateVideoFromImageListInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalRequestResponse>> {
+    const body = {
+      external_user: normalizeExternalUserIdentity(externalUser),
+      input,
+      webhookUrl: options?.webhookUrl,
+    };
+
+    return this.post<ExternalRequestResponse>('external_users/image_list_to_video', body, options);
+  }
+
+  /**
+   * Create or refresh an external-user session and receive that user’s dedicated external API key.
+   */
+  async createExternalUserSession(
+    externalUser: ExternalUserIdentity,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalUserSessionResponse>> {
+    const body = {
+      external_user: normalizeExternalUserIdentity(externalUser),
+    };
+
+    return this.post<ExternalUserSessionResponse>('external_users/session', body, options);
+  }
+
+  /**
+   * Create a short-lived external-user login token plus a ready-to-open client login URL.
+   */
+  async createExternalUserLoginToken(
+    externalUser?: ExternalUserIdentity | null,
+    options?: ({ redirect?: string } & SamsarRequestOptions),
+  ): Promise<SamsarResult<ExternalCreateLoginTokenResponse>> {
+    const body: Record<string, unknown> = {};
+
+    if (externalUser) {
+      body.external_user = normalizeExternalUserIdentity(externalUser);
+    }
+    if (options?.redirect) {
+      body.redirect = options.redirect;
+    }
+
+    return this.post<ExternalCreateLoginTokenResponse>('external_users/create_login_token', body, options);
+  }
+
+  /**
+   * Store or clear the external user’s assistant system prompt.
+   * When set, it overrides the owning account prompt for future assistant requests from that external user.
+   */
+  async setExternalAssistantSystemPrompt(
+    payload: AssistantSetSystemPromptRequest,
+    externalUser?: ExternalUserIdentity | null,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalAssistantSetSystemPromptResponse>> {
+    const body: Record<string, unknown> = {
+      ...payload,
+    };
+
+    if (externalUser) {
+      body.external_user = normalizeExternalUserIdentity(externalUser);
+    }
+
+    return this.post<ExternalAssistantSetSystemPromptResponse>(
+      'external_users/assistant/set_system_prompt',
+      body,
+      options,
+    );
+  }
+
+  /**
+   * Create an assistant completion scoped to an external user while billing that external user's credit balance.
+   * The owning Samsar account's configured assistant model is used internally.
+   */
+  async createExternalAssistantCompletion(
+    payload: AssistantCompletionRequest,
+    externalUser?: ExternalUserIdentity | null,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<AssistantCompletionResponse>> {
+    const body: Record<string, unknown> = {
+      ...payload,
+    };
+
+    if (externalUser) {
+      body.external_user = normalizeExternalUserIdentity(externalUser);
+    }
+
+    return this.post<AssistantCompletionResponse>(
+      'external_users/assistant/completion',
+      body,
+      options,
+    );
   }
 
   /**
@@ -1585,13 +2103,45 @@ export class SamsarClient {
   }
 
   /**
-   * Create a new embedding template and store embeddings for a JSON array.
+   * Store or clear the account-level system prompt used by assistant completions.
+   * Pass `null` (for `system_prompt`) or an empty string to clear the custom prompt and revert to Samsar's default assistant prompt.
+   */
+  async setAssistantSystemPrompt(
+    payload: AssistantSetSystemPromptRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<AssistantSetSystemPromptResponse>> {
+    return this.post<AssistantSetSystemPromptResponse>('assistant/set_system_prompt', payload, options);
+  }
+
+  /**
+   * Create an assistant completion for an existing session.
+   * Returns an OpenAI Responses-style payload and includes credit headers when applicable.
+   */
+  async createAssistantCompletion(
+    payload: AssistantCompletionRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<AssistantCompletionResponse>> {
+    return this.post<AssistantCompletionResponse>('assistant/completion', payload, options);
+  }
+
+  /**
+   * Create a new embedding template from either a JSON array (`records`) or a URL input (`urls`).
    */
   async createEmbedding(
     payload: CreateEmbeddingRequest,
     options?: SamsarRequestOptions,
   ): Promise<SamsarResult<CreateEmbeddingResponse>> {
     return this.post<CreateEmbeddingResponse>('chat/create_embedding', payload, options);
+  }
+
+  /**
+   * Create a new embedding template from one URL or a list of URLs.
+   */
+  async createEmbeddingFromUrl(
+    payload: CreateEmbeddingFromUrlRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<CreateEmbeddingResponse>> {
+    return this.post<CreateEmbeddingResponse>('chat/create_embedding_from_url', payload, options);
   }
 
   /**
@@ -1743,7 +2293,33 @@ export class SamsarClient {
     payload: CreateReceiptTemplateRequest,
     options?: SamsarRequestOptions,
   ): Promise<SamsarResult<CreateReceiptTemplateResponse>> {
-    return this.post<CreateReceiptTemplateResponse>('image/receipt_templates/create', payload, options);
+    const raw = payload as Record<string, unknown>;
+    const imageUrl =
+      (typeof raw.image_url === 'string' && raw.image_url.trim()) ||
+      (typeof raw.imageUrl === 'string' && raw.imageUrl.trim()) ||
+      (typeof raw.receipt_url === 'string' && raw.receipt_url.trim()) ||
+      (typeof raw.receiptUrl === 'string' && raw.receiptUrl.trim()) ||
+      (typeof raw.template_url === 'string' && raw.template_url.trim()) ||
+      (typeof raw.templateUrl === 'string' && raw.templateUrl.trim()) ||
+      null;
+    if (!imageUrl) {
+      throw new Error('image_url (or receipt_url/template_url) is required');
+    }
+
+    const templateName =
+      (typeof raw.template_name === 'string' && raw.template_name.trim()) ||
+      (typeof raw.templateName === 'string' && raw.templateName.trim()) ||
+      undefined;
+
+    const requestPayload: CreateReceiptTemplateRequest = {
+      ...payload,
+      image_url: imageUrl,
+      receipt_url: imageUrl,
+      template_url: imageUrl,
+      ...(templateName ? { template_name: templateName } : {}),
+    };
+
+    return this.post<CreateReceiptTemplateResponse>('image/receipt_templates/create', requestPayload, options);
   }
 
   /**
@@ -1754,7 +2330,59 @@ export class SamsarClient {
     payload: QueryReceiptTemplateRequest,
     options?: SamsarRequestOptions,
   ): Promise<SamsarResult<QueryReceiptTemplateResponse>> {
-    return this.post<QueryReceiptTemplateResponse>('image/receipt_templates/query', payload, options);
+    const raw = payload as Record<string, unknown>;
+    const imageUrl =
+      (typeof raw.image_url === 'string' && raw.image_url.trim()) ||
+      (typeof raw.imageUrl === 'string' && raw.imageUrl.trim()) ||
+      (typeof raw.receipt_url === 'string' && raw.receipt_url.trim()) ||
+      (typeof raw.receiptUrl === 'string' && raw.receiptUrl.trim()) ||
+      null;
+    if (!imageUrl) {
+      throw new Error('image_url (or receipt_url) is required');
+    }
+
+    const templateId =
+      (typeof raw.template_id === 'string' && raw.template_id.trim()) ||
+      (typeof raw.templateId === 'string' && raw.templateId.trim()) ||
+      (typeof raw.receipt_template_id === 'string' && raw.receipt_template_id.trim()) ||
+      (typeof raw.receiptTemplateId === 'string' && raw.receiptTemplateId.trim()) ||
+      null;
+    if (!templateId) {
+      throw new Error('template_id is required');
+    }
+
+    const requestPayload: QueryReceiptTemplateRequest = {
+      ...payload,
+      image_url: imageUrl,
+      receipt_url: imageUrl,
+      template_id: templateId,
+      receipt_template_id: templateId,
+    };
+
+    return this.post<QueryReceiptTemplateResponse>('image/receipt_templates/query', requestPayload, options);
+  }
+
+  /**
+   * Fetch the structured template JSON for a template id that belongs to the authenticated API key.
+   */
+  async getReceiptTemplateJson(
+    templateId: string,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<GetReceiptTemplateJsonResponse>> {
+    const normalizedTemplateId = typeof templateId === 'string' ? templateId.trim() : '';
+    if (!normalizedTemplateId) {
+      throw new Error('templateId is required');
+    }
+
+    const query: QueryParams = {
+      ...(options?.query ?? {}),
+      template_id: normalizedTemplateId,
+    };
+
+    return this.get<GetReceiptTemplateJsonResponse>('image/template_json', {
+      ...(options ?? {}),
+      query,
+    });
   }
 
   /**
@@ -1791,6 +2419,116 @@ export class SamsarClient {
   }
 
   /**
+   * Fetch the shared credit balance plus attribution summary for a specific external user.
+   */
+  async getExternalCreditsBalance(
+    externalUser: ExternalUserIdentity,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalCreditsBalanceResponse>> {
+    return this.get<ExternalCreditsBalanceResponse>('external_users/credits', {
+      ...(options ?? {}),
+      query: {
+        ...buildExternalUserQuery(externalUser),
+        ...(options?.query ?? {}),
+      },
+    });
+  }
+
+  /**
+   * Manually grant credits to a specific external user while also crediting the shared platform account.
+   */
+  async grantExternalUserCredits(
+    externalUser: ExternalUserIdentity,
+    credits: number,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalCreditsGrantResponse>> {
+    if (!Number.isFinite(credits) || credits <= 0) {
+      throw new Error('credits must be a positive number');
+    }
+
+    const payload = {
+      external_user: normalizeExternalUserIdentity(externalUser),
+      input: {
+        credits: Math.round(credits),
+      },
+    };
+
+    return this.post<ExternalCreditsGrantResponse>('external_users/credits/grant', payload, options);
+  }
+
+  /**
+   * Fetch recent external-user-attributed requests for library or dashboard views.
+   */
+  async listExternalUserRequests(
+    externalUser?: ExternalUserIdentity | null,
+    options?: ({ limit?: number } & SamsarRequestOptions),
+  ): Promise<SamsarResult<ExternalRequestsListResponse>> {
+    const query: QueryParams = {
+      ...(options?.query ?? {}),
+    };
+
+    if (externalUser) {
+      Object.assign(query, buildExternalUserQuery(externalUser));
+    }
+    if (options?.limit !== undefined) {
+      query.limit = options.limit;
+    }
+
+    return this.get<ExternalRequestsListResponse>('external_users/requests', {
+      ...(options ?? {}),
+      query,
+    });
+  }
+
+  /**
+   * Archive an external-user request so it no longer appears in the external library/feed.
+   */
+  async archiveExternalUserRequest(
+    requestId: string,
+    externalUser?: ExternalUserIdentity | null,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalArchiveResponse>> {
+    if (!requestId || typeof requestId !== 'string') {
+      throw new Error('requestId is required');
+    }
+
+    const payload: Record<string, unknown> = {
+      request_id: requestId,
+    };
+
+    if (externalUser) {
+      payload.external_user = normalizeExternalUserIdentity(externalUser);
+    }
+
+    return this.post<ExternalArchiveResponse>('external_users/archive', payload, options);
+  }
+
+  /**
+   * Publish a completed external-user request to the public library/feed.
+   */
+  async publishExternalUserRequest(
+    requestId: string,
+    payload: ExternalPublishInput = {},
+    externalUser?: ExternalUserIdentity | null,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalPublishResponse>> {
+    if (!requestId || typeof requestId !== 'string') {
+      throw new Error('requestId is required');
+    }
+
+    const body: Record<string, unknown> = {
+      request_id: requestId,
+      ...payload,
+    };
+
+    if (externalUser) {
+      body.external_user = normalizeExternalUserIdentity(externalUser);
+    }
+
+    return this.post<ExternalPublishResponse>('external_users/publish', body, options);
+  }
+
+  /**
    * Create a short-lived login token that can be exchanged for an auth token in the client app.
    */
   async createLoginToken(
@@ -1816,6 +2554,28 @@ export class SamsarClient {
     };
 
     return this.post<CreditsRechargeResponse>('credits/recharge', payload, options);
+  }
+
+  /**
+   * Create a shared-balance Stripe recharge attributed to an external user.
+   */
+  async createExternalCreditsRecharge(
+    externalUser: ExternalUserIdentity,
+    credits: number,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalCreditsRechargeResponse>> {
+    if (!Number.isFinite(credits) || credits <= 0) {
+      throw new Error('credits must be a positive number');
+    }
+
+    const payload = {
+      external_user: normalizeExternalUserIdentity(externalUser),
+      input: {
+        credits: Math.round(credits),
+      },
+    };
+
+    return this.post<ExternalCreditsRechargeResponse>('external_users/credits/recharge', payload, options);
   }
 
   /**
@@ -1859,6 +2619,66 @@ export class SamsarClient {
       query.setupIntentId = payload.setupIntentId;
     }
     return this.get<PaymentStatusResponse>('payment_status', {
+      ...(options ?? {}),
+      query,
+    });
+  }
+
+  /**
+   * Poll shared-balance payment status for an external user credit purchase.
+   */
+  async getExternalPaymentStatus(
+    payload: ExternalPaymentStatusRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalPaymentStatusResponse>> {
+    const query: QueryParams = {
+      ...(options?.query ?? {}),
+    };
+    if (payload?.external_payment_id) {
+      query.external_payment_id = payload.external_payment_id;
+    }
+    if (payload?.externalPaymentId) {
+      query.external_payment_id = payload.externalPaymentId;
+    }
+    if (payload?.checkoutSessionId) {
+      query.checkoutSessionId = payload.checkoutSessionId;
+    }
+    if (payload?.paymentIntentId) {
+      query.paymentIntentId = payload.paymentIntentId;
+    }
+    if (payload?.setupIntentId) {
+      query.setupIntentId = payload.setupIntentId;
+    }
+
+    return this.get<ExternalPaymentStatusResponse>('external_users/payment_status', {
+      ...(options ?? {}),
+      query,
+    });
+  }
+
+  /**
+   * Exchange a login token or verify an auth token against /users/verify_token.
+   */
+  async verifyClientSession(
+    payload: VerifyClientSessionInput,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<VerifiedClientSessionResponse>> {
+    const query: QueryParams = {
+      ...(options?.query ?? {}),
+    };
+
+    if (payload?.loginToken) {
+      query.loginToken = payload.loginToken;
+    }
+    if (payload?.authToken) {
+      query.authToken = payload.authToken;
+    }
+
+    if (!query.loginToken && !query.authToken) {
+      throw new Error('loginToken or authToken is required');
+    }
+
+    return this.get<VerifiedClientSessionResponse>(this.buildRootUrl('users/verify_token'), {
       ...(options ?? {}),
       query,
     });
@@ -1920,6 +2740,21 @@ export class SamsarClient {
     };
 
     return { ...response, data: normalizedData };
+  }
+
+  /**
+   * Retrieve the status of an external-user-attributed asynchronous request by external request_id.
+   */
+  async getExternalStatus(
+    requestId: string,
+    options?: SamsarRequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<ExternalStatusResponse>> {
+    const response = await this.getStatus(requestId, {
+      ...options,
+      path: 'external_users/status',
+    });
+
+    return response as SamsarResult<ExternalStatusResponse>;
   }
 
   /**
@@ -2047,6 +2882,7 @@ export class SamsarClient {
     const headers: Record<string, string | undefined> = {
       Authorization: `Bearer ${this.apiKey}`,
       'Content-Type': options.body ? 'application/json' : undefined,
+      'x-external-user-api-key': options.externalUserApiKey ?? this.externalUserApiKey,
       ...this.defaultHeaders,
       ...(options.headers ?? {}),
     };
@@ -2071,6 +2907,13 @@ export class SamsarClient {
     }
 
     return url.toString();
+  }
+
+  private buildRootUrl(path: string): string {
+    const cleanedPath = path.replace(/^\/+/, '');
+    const baseUrl = trimTrailingSlash(this.baseUrl);
+    const rootUrl = baseUrl.endsWith('/v1') ? baseUrl.slice(0, -3) : baseUrl;
+    return `${rootUrl}/${cleanedPath}`;
   }
 }
 
@@ -2106,6 +2949,54 @@ function removeEmptyHeaders(headers: Record<string, string | undefined | null>):
     normalized[key] = value;
   }
   return normalized;
+}
+
+function normalizeExternalUserIdentity(externalUser: ExternalUserIdentity): Record<string, unknown> {
+  const externalUserId =
+    externalUser.external_user_id ??
+    externalUser.externalUserId;
+
+  if (!externalUser?.provider || !externalUserId) {
+    throw new Error('externalUser.provider and externalUser.external_user_id are required');
+  }
+
+  return {
+    provider: externalUser.provider,
+    external_user_id: externalUserId,
+    ...(externalUser.external_app_id || externalUser.externalAppId
+      ? { external_app_id: externalUser.external_app_id ?? externalUser.externalAppId }
+      : {}),
+    ...(externalUser.external_company_id || externalUser.externalCompanyId
+      ? { external_company_id: externalUser.external_company_id ?? externalUser.externalCompanyId }
+      : {}),
+    ...(externalUser.external_account_id || externalUser.externalAccountId
+      ? { external_account_id: externalUser.external_account_id ?? externalUser.externalAccountId }
+      : {}),
+    ...(externalUser.email ? { email: externalUser.email } : {}),
+    ...(externalUser.username ? { username: externalUser.username } : {}),
+    ...(externalUser.display_name || externalUser.displayName
+      ? { display_name: externalUser.display_name ?? externalUser.displayName }
+      : {}),
+    ...(externalUser.avatar_url || externalUser.avatarUrl
+      ? { avatar_url: externalUser.avatar_url ?? externalUser.avatarUrl }
+      : {}),
+    ...(externalUser.metadata ? { metadata: externalUser.metadata } : {}),
+  };
+}
+
+function buildExternalUserQuery(externalUser: ExternalUserIdentity): QueryParams {
+  const normalized = normalizeExternalUserIdentity(externalUser);
+  return {
+    provider: normalized.provider as string,
+    external_user_id: normalized.external_user_id as string,
+    external_app_id: (normalized.external_app_id as string | undefined) ?? undefined,
+    external_company_id: (normalized.external_company_id as string | undefined) ?? undefined,
+    external_account_id: (normalized.external_account_id as string | undefined) ?? undefined,
+    email: (normalized.email as string | undefined) ?? undefined,
+    username: (normalized.username as string | undefined) ?? undefined,
+    display_name: (normalized.display_name as string | undefined) ?? undefined,
+    avatar_url: (normalized.avatar_url as string | undefined) ?? undefined,
+  };
 }
 
 export default SamsarClient;
