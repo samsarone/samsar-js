@@ -150,13 +150,29 @@ const embedding = await samsar.createEmbedding({
 // Create embeddings from one URL or a URL list
 const websiteEmbedding = await samsar.createEmbeddingFromUrl({
   name: 'product-docs',
+  levels: 2,
   urls: [
     'https://example.com/docs/getting-started',
     'https://example.com/docs/pricing',
   ],
 });
 
-// The generic createEmbedding wrapper also accepts `urls` on the same route if you prefer one entrypoint.
+// `levels` controls crawl depth for URL mode: 1 = only listed URLs, 2 = one link hop, 3 = two link hops.
+// The API defaults to 3 levels and caps total crawled pages at 50 per request.
+
+// Create embeddings from already cleaned plain text without crawling
+const cleanTextEmbedding = await samsar.generateEmbeddingsFromPlainText({
+  name: 'product-docs-clean',
+  plain_text: [
+    {
+      url: 'https://example.com/docs/getting-started',
+      title: 'Getting Started',
+      content: 'Cleaned plain text content from the page.',
+    },
+  ],
+});
+
+// The generic createEmbedding wrapper also accepts `urls` plus `levels` on the same route if you prefer one entrypoint.
 
 // Search against an embedding template
 const search = await samsar.searchAgainstEmbedding({
@@ -321,6 +337,22 @@ const externalAssistant = await platform.createExternalAssistantCompletion(
 );
 console.log(externalAssistant.data.output_text);
 
+// Build embeddings for that external user from already cleaned plain text
+const externalEmbedding = await platform.generateExternalEmbeddingsFromPlainText(
+  {
+    name: 'creator-docs-clean',
+    plain_text: [
+      {
+        url: 'https://example.com/creator/faq',
+        title: 'Creator FAQ',
+        content: 'Cleaned plain text content for this external user.',
+      },
+    ],
+  },
+  externalUser,
+);
+console.log(externalEmbedding.data.template_id);
+
 // Fetch their external library
 const library = await platform.listExternalUserRequests(externalUser, { limit: 12 });
 console.log(library.data.requests.length);
@@ -364,7 +396,8 @@ Each method returns `{ data, status, headers, creditsCharged, creditsRemaining, 
 
 - Assistant completions are billed from actual request usage. Samsar measures the processed input and generated output, converts usage to credits using the standard `100 credits = $1` rule, and applies a `2.5x` assistant multiplier so text-only and multimodal sessions are priced consistently.
 - Embedding endpoints (`createEmbedding`, `updateEmbedding`, `searchAgainstEmbedding`, `similarToEmbedding`) are billed by input tokens at $1 per million tokens. `deleteEmbeddings` does not consume tokens.
-- URL-based embedding creation (`createEmbedding` with `urls`, or `createEmbeddingFromUrl`) adds Firecrawl crawl cost to the embedding token cost, then applies Samsar's 100 credits per USD mapping with a `2.5x` multiplier.
+- URL-based embedding creation (`createEmbedding` with `urls`, or `createEmbeddingFromUrl`) supports `levels` 1-3, defaults to 3, caps total crawled pages at 50 per request, bills actual Firecrawl usage with a `2.5x` crawl multiplier, and then bills the embedding phase with a separate flat `2.5x` multiplier.
+- Plain-text embedding creation (`generateEmbeddingsFromPlainText`, `generateExternalEmbeddingsFromPlainText`) skips crawling and charges only the embedding-token cost with a flat `2.5x` multiplier.
 - Token-based routes scale with the amount of content processed. Larger prompts, longer responses, and richer inputs use more credits than short text-only requests.
 - Receipt template creation (`createReceiptTemplate`) and template JSON lookup (`getReceiptTemplateJson`) are free; receipt template query (`queryReceiptTemplate`) costs 50 credits per request.
 

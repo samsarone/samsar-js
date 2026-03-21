@@ -1,6 +1,6 @@
 {
   "name": "samsar-js",
-  "version": "0.48.10",
+  "version": "0.48.11",
   "description": "TypeScript client for the Samsar Processor API routes.",
   "type": "module",
   "main": "dist/index.js",

@@ -467,6 +467,27 @@ export interface EmbeddingFieldOptions {
 
 export type EmbeddingUrlInput = string | string[];
 
+export interface PlainTextEmbeddingEntry {
+  plain_text?: string;
+  plainText?: string;
+  content?: string;
+  text?: string;
+  cleaned_text?: string;
+  cleanedText?: string;
+  markdown?: string;
+  body?: string;
+  url?: string;
+  title?: string;
+  description?: string;
+  language?: string;
+  [key: string]: unknown;
+}
+
+export type PlainTextEmbeddingInput =
+  | string
+  | PlainTextEmbeddingEntry
+  | Array<string | PlainTextEmbeddingEntry>;
+
 export type EmbeddingFieldOptionsInput =
   | Record<string, EmbeddingFieldOptions>
   | Array<
@@ -490,6 +511,7 @@ export interface CreateEmbeddingRequest {
   records?: Array<Record<string, unknown>>;
   urls?: EmbeddingUrlInput;
   url?: string;
+  levels?: number;
   name?: string;
   embedding_name?: string;
   template_name?: string;
@@ -501,6 +523,34 @@ export interface CreateEmbeddingRequest {
 export interface CreateEmbeddingFromUrlRequest {
   urls?: EmbeddingUrlInput;
   url?: string;
+  levels?: number;
+  name?: string;
+  embedding_name?: string;
+  template_name?: string;
+  field_options?: EmbeddingFieldOptionsInput;
+  fieldOptions?: EmbeddingFieldOptionsInput;
+  [key: string]: unknown;
+}
+
+export interface GenerateEmbeddingsFromPlainTextRequest {
+  plain_text?: PlainTextEmbeddingInput;
+  plainText?: PlainTextEmbeddingInput;
+  plain_texts?: PlainTextEmbeddingInput;
+  plainTexts?: PlainTextEmbeddingInput;
+  texts?: PlainTextEmbeddingInput;
+  documents?: PlainTextEmbeddingInput;
+  items?: PlainTextEmbeddingInput;
+  entries?: PlainTextEmbeddingInput;
+  content?: string;
+  text?: string;
+  cleaned_text?: string;
+  cleanedText?: string;
+  markdown?: string;
+  body?: string;
+  url?: string;
+  title?: string;
+  description?: string;
+  language?: string;
   name?: string;
   embedding_name?: string;
   template_name?: string;
@@ -517,6 +567,8 @@ export interface CreateEmbeddingResponse {
   input_url_count?: number;
   processed_url_count?: number;
   firecrawl_credits_used?: number;
+  crawl_levels?: number;
+  max_links?: number;
   skipped_urls?: EmbeddingUrlIssue[];
   crawl_errors?: EmbeddingUrlIssue[];
   structured_fields?: EmbeddingStructuredField[];
@@ -1209,6 +1261,11 @@ export interface ExternalAssistantSetSystemPromptResponse extends AssistantSetSy
   externalUser?: ExternalUserSummary | null;
 }
 
+export interface ExternalCreateEmbeddingResponse extends CreateEmbeddingResponse {
+  external_user?: ExternalUserSummary | null;
+  externalUser?: ExternalUserSummary | null;
+}
+
 export interface VerifyClientSessionInput {
   loginToken?: string;
   authToken?: string;
@@ -1597,6 +1654,30 @@ export class SamsarClient {
 
     return this.post<AssistantCompletionResponse>(
       'external_users/assistant/completion',
+      body,
+      options,
+    );
+  }
+
+  /**
+   * Create a new embedding template for an external user from already cleaned plain text.
+   * This skips crawling and bills the external user's credits only.
+   */
+  async generateExternalEmbeddingsFromPlainText(
+    payload: GenerateEmbeddingsFromPlainTextRequest,
+    externalUser?: ExternalUserIdentity | null,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalCreateEmbeddingResponse>> {
+    const body: Record<string, unknown> = {
+      ...payload,
+    };
+
+    if (externalUser) {
+      body.external_user = normalizeExternalUserIdentity(externalUser);
+    }
+
+    return this.post<ExternalCreateEmbeddingResponse>(
+      'external_users/generate_embeddings_from_plain_text',
       body,
       options,
     );
@@ -2172,6 +2253,7 @@ export class SamsarClient {
 
   /**
    * Create a new embedding template from either a JSON array (`records`) or a URL input (`urls`).
+   * URL mode also accepts `levels` (1-3) to control crawl depth.
    */
   async createEmbedding(
     payload: CreateEmbeddingRequest,
@@ -2182,12 +2264,24 @@ export class SamsarClient {
 
   /**
    * Create a new embedding template from one URL or a list of URLs.
+   * Pass `levels` (1-3) to control crawl depth; the API defaults to 3.
    */
   async createEmbeddingFromUrl(
     payload: CreateEmbeddingFromUrlRequest,
     options?: SamsarRequestOptions,
   ): Promise<SamsarResult<CreateEmbeddingResponse>> {
     return this.post<CreateEmbeddingResponse>('chat/create_embedding_from_url', payload, options);
+  }
+
+  /**
+   * Create a new embedding template from already cleaned plain text.
+   * This skips crawling and uses the same compatible template format as the JSON and URL routes.
+   */
+  async generateEmbeddingsFromPlainText(
+    payload: GenerateEmbeddingsFromPlainTextRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<CreateEmbeddingResponse>> {
+    return this.post<CreateEmbeddingResponse>('chat/generate_embeddings_from_plain_text', payload, options);
   }
 
   /**
