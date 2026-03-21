@@ -998,6 +998,10 @@ export interface ExternalUserIdentity {
   displayName?: string;
   avatar_url?: string;
   avatarUrl?: string;
+  user_type?: string;
+  userType?: string;
+  browser_installation?: Record<string, unknown> | null;
+  browserInstallation?: Record<string, unknown> | null;
   metadata?: Record<string, unknown>;
   [key: string]: unknown;
 }
@@ -1012,6 +1016,8 @@ export interface ExternalUserSummary {
   username?: string | null;
   display_name?: string | null;
   avatar_url?: string | null;
+  user_type?: string | null;
+  browser_installation?: Record<string, unknown> | null;
   generation_credits?: number;
   has_external_api_key?: boolean;
   external_api_key_created_at?: string | null;
@@ -1052,6 +1058,18 @@ export interface ExternalUserSessionResponse extends ExternalCreditsBalanceRespo
   external_api_key?: string | null;
   external_user?: ExternalUserSummary | null;
   externalUser?: ExternalUserSummary | null;
+}
+
+export interface ExternalAssistantSessionResponse {
+  session_id: string;
+  request_id?: string;
+  session_type?: string | null;
+  session_name?: string | null;
+  external_user?: ExternalUserSummary | null;
+  metadata?: Record<string, unknown> | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  [key: string]: unknown;
 }
 
 export interface ExternalCreditsGrantResponse {
@@ -1487,6 +1505,34 @@ export class SamsarClient {
     };
 
     return this.post<ExternalUserSessionResponse>('external_users/session', body, options);
+  }
+
+  /**
+   * Create a blank assistant session for an external user.
+   * The returned session_id can be reused for future external assistant completions.
+   */
+  async createExternalAssistantSession(
+    externalUser?: ExternalUserIdentity | null,
+    payload: {
+      session_name?: string;
+      sessionName?: string;
+      metadata?: Record<string, unknown>;
+    } = {},
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalAssistantSessionResponse>> {
+    const body: Record<string, unknown> = {
+      ...payload,
+    };
+
+    if (externalUser) {
+      body.external_user = normalizeExternalUserIdentity(externalUser);
+    }
+
+    return this.post<ExternalAssistantSessionResponse>(
+      'external_users/utils/assistant_session',
+      body,
+      options,
+    );
   }
 
   /**
@@ -2980,6 +3026,15 @@ function normalizeExternalUserIdentity(externalUser: ExternalUserIdentity): Reco
     ...(externalUser.avatar_url || externalUser.avatarUrl
       ? { avatar_url: externalUser.avatar_url ?? externalUser.avatarUrl }
       : {}),
+    ...(externalUser.user_type || externalUser.userType
+      ? { user_type: externalUser.user_type ?? externalUser.userType }
+      : {}),
+    ...(externalUser.browser_installation || externalUser.browserInstallation
+      ? {
+          browser_installation:
+            externalUser.browser_installation ?? externalUser.browserInstallation,
+        }
+      : {}),
     ...(externalUser.metadata ? { metadata: externalUser.metadata } : {}),
   };
 }
@@ -2996,6 +3051,7 @@ function buildExternalUserQuery(externalUser: ExternalUserIdentity): QueryParams
     username: (normalized.username as string | undefined) ?? undefined,
     display_name: (normalized.display_name as string | undefined) ?? undefined,
     avatar_url: (normalized.avatar_url as string | undefined) ?? undefined,
+    user_type: (normalized.user_type as string | undefined) ?? undefined,
   };
 }
 
