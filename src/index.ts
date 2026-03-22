@@ -1133,6 +1133,54 @@ export interface ExternalCreditsGrantResponse {
   [key: string]: unknown;
 }
 
+export interface ExternalUtilityChargeRequest {
+  utility_type?: string;
+  utilityType?: string;
+  type?: string;
+  provider?: string;
+  model?: string;
+  model_id?: string;
+  modelId?: string;
+  text?: string;
+  content?: string;
+  characters?: number;
+  character_count?: number;
+  characterCount?: number;
+  duration_ms?: number;
+  durationMs?: number;
+  duration_seconds?: number;
+  durationSeconds?: number;
+  duration_minutes?: number;
+  durationMinutes?: number;
+  duration_hours?: number;
+  durationHours?: number;
+  firecrawl_credits_used?: number;
+  firecrawlCreditsUsed?: number;
+  pricing_multiplier?: number;
+  pricingMultiplier?: number;
+  multiplier?: number;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface ExternalUtilityChargeResponse {
+  utilityType?: string;
+  provider?: string | null;
+  model?: string | null;
+  creditsCharged?: number;
+  remainingCredits?: number | null;
+  pricing?: {
+    costUsd?: number;
+    pricingMultiplier?: number;
+    creditsPerDollar?: number;
+    units?: Record<string, unknown>;
+    [key: string]: unknown;
+  } | null;
+  externalUser?: ExternalUserSummary | null;
+  external_user?: ExternalUserSummary | null;
+  [key: string]: unknown;
+}
+
 export interface ExternalCreditsRechargeResponse extends CreditsRechargeResponse {
   external_payment_id?: string;
   external_user?: ExternalUserSummary | null;
@@ -1587,6 +1635,30 @@ export class SamsarClient {
 
     return this.post<ExternalAssistantSessionResponse>(
       'external_users/utils/assistant_session',
+      body,
+      options,
+    );
+  }
+
+  /**
+   * Charge an external user's credits for utility usage such as ElevenLabs TTS/STT or Firecrawl crawl costs.
+   * This is useful when a proxy or integration incurs third-party usage outside the standard Samsar route billing flow.
+   */
+  async chargeExternalUserUtilityUsage(
+    payload: ExternalUtilityChargeRequest,
+    externalUser?: ExternalUserIdentity | null,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalUtilityChargeResponse>> {
+    const body: Record<string, unknown> = {
+      ...payload,
+    };
+
+    if (externalUser) {
+      body.external_user = normalizeExternalUserIdentity(externalUser);
+    }
+
+    return this.post<ExternalUtilityChargeResponse>(
+      'external_users/utils/usage_charge',
       body,
       options,
     );
@@ -2264,7 +2336,7 @@ export class SamsarClient {
 
   /**
    * Create a new embedding template from one URL or a list of URLs.
-   * Pass `levels` (1-3) to control crawl depth; the API defaults to 3.
+   * Pass `levels` (1-3) to control crawl depth; the API defaults to 2.
    */
   async createEmbeddingFromUrl(
     payload: CreateEmbeddingFromUrlRequest,

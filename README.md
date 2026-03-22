@@ -158,7 +158,7 @@ const websiteEmbedding = await samsar.createEmbeddingFromUrl({
 });
 
 // `levels` controls crawl depth for URL mode: 1 = only listed URLs, 2 = one link hop, 3 = two link hops.
-// The API defaults to 3 levels and caps total crawled pages at 50 per request.
+// The API defaults to 2 levels and caps total crawled pages at 50 per request.
 
 // Create embeddings from already cleaned plain text without crawling
 const cleanTextEmbedding = await samsar.generateEmbeddingsFromPlainText({
@@ -396,7 +396,7 @@ Each method returns `{ data, status, headers, creditsCharged, creditsRemaining, 
 
 - Assistant completions are billed from actual request usage. Samsar measures the processed input and generated output, converts usage to credits using the standard `100 credits = $1` rule, and applies a `2.5x` assistant multiplier so text-only and multimodal sessions are priced consistently.
 - Embedding endpoints (`createEmbedding`, `updateEmbedding`, `searchAgainstEmbedding`, `similarToEmbedding`) are billed by input tokens at $1 per million tokens. `deleteEmbeddings` does not consume tokens.
-- URL-based embedding creation (`createEmbedding` with `urls`, or `createEmbeddingFromUrl`) supports `levels` 1-3, defaults to 3, caps total crawled pages at 50 per request, bills actual Firecrawl usage with a `2.5x` crawl multiplier, and then bills the embedding phase with a separate flat `2.5x` multiplier.
+- URL-based embedding creation (`createEmbedding` with `urls`, or `createEmbeddingFromUrl`) supports `levels` 1-3, defaults to 2, caps total crawled pages at 50 per request, bills actual Firecrawl usage with a `2.5x` crawl multiplier, and then bills the embedding phase with a separate flat `2.5x` multiplier.
 - Plain-text embedding creation (`generateEmbeddingsFromPlainText`, `generateExternalEmbeddingsFromPlainText`) skips crawling and charges only the embedding-token cost with a flat `2.5x` multiplier.
 - Token-based routes scale with the amount of content processed. Larger prompts, longer responses, and richer inputs use more credits than short text-only requests.
 - Receipt template creation (`createReceiptTemplate`) and template JSON lookup (`getReceiptTemplateJson`) are free; receipt template query (`queryReceiptTemplate`) costs 50 credits per request.
