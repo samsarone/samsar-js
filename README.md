@@ -93,7 +93,10 @@ const cancelled = await samsar.cancelRender({
 console.log(cancelled.data.status, cancelled.data.cancelled);
 
 // Enhance chat message
-const enhanced = await samsar.enhanceMessage({ message: 'Please improve this caption.' });
+const enhanced = await samsar.enhanceMessage({
+  message: 'Please improve this caption.',
+  maxwords: 450,
+});
 
 // Set an account-level assistant system prompt
 await samsar.setAssistantSystemPrompt({

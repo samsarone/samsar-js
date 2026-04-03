@@ -327,6 +327,8 @@ export interface EnhanceMessageRequest {
   message: string;
   metadata?: Record<string, unknown>;
   language?: string;
+  maxwords?: number | string;
+  maxWords?: number | string;
 }
 
 export interface EnhanceMessageResponse {
@@ -2293,6 +2295,7 @@ export class SamsarClient {
   /**
    * Enhance or rewrite text using the chat enhancement endpoint.
    * Optionally pass `language` (code or name) to enforce the output language.
+   * Pass `maxwords` (or `maxWords`) as a positive integer to override the default output limit.
    */
   async enhanceMessage(
     payload: EnhanceMessageRequest,
