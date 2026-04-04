@@ -780,6 +780,7 @@ export interface ExtendImageListRequest {
   num_images: number;
   prompt?: string;
   metadata?: Record<string, unknown>;
+  aspect_ratio?: string;
 }
 
 export interface ExtendImageListResponse {
@@ -793,6 +794,7 @@ export interface ExtendImageListResponse {
   metadata?: Record<string, unknown>;
   prompt?: string;
   num_images?: number;
+  aspect_ratio?: string;
   userId?: string;
   creditsCharged?: number;
   remainingCredits?: number;

@@ -217,7 +217,9 @@ const replaced = await samsar.replaceBrandingFromImage({
 // Extend image set
 const images = await samsar.extendImageList({
   image_urls: ['https://example.com/extra.jpg'],
+  prompt: 'Create a cinematic travel header banner',
   num_images: 4,
+  aspect_ratio: '16:9',
 });
 
 // Create a reusable receipt template from one sample receipt image (free endpoint)
