@@ -34,11 +34,11 @@ const samsar = new SamsarClient({ apiKey: process.env.SAMSAR_API_KEY! });
 const video = await samsar.createVideoFromText(
   {
     prompt: 'A drone shot of a beach at sunrise',
-    image_model: 'GPTIMAGE1',
+    image_model: 'GPTIMAGE2',
     video_model: 'RUNWAYML',
     duration: 30,
     font_key: 'Poppins',
-    enable_subtitles: false,
+    enable_subtitles: true,
   },
   { webhookUrl: 'https://example.com/webhook' },
 );
@@ -49,12 +49,47 @@ const videoFromImages = await samsar.createVideoFromImageList(
     image_urls: ['https://example.com/a.jpg', 'https://example.com/b.jpg'],
     prompt: 'Cinematic sequence with smooth transitions',
     metadata: { project: 'demo' },
+    video_model: 'RUNWAYML',
+    aspect_ratio: '16:9',
     language: 'en',
     font_key: 'Poppins',
-    enable_subtitles: false,
+    enable_subtitles: true,
   },
   { webhookUrl: 'https://example.com/webhook' },
 );
+
+// Create a video with a provided outro image
+await samsar.createVideoFromImageList({
+  image_urls: ['https://example.com/a.jpg', 'https://example.com/b.jpg'],
+  prompt: 'Product launch teaser with a clean final CTA',
+  video_model: 'KLING3.0',
+  aspect_ratio: '16:9',
+  outro_image_url: 'https://cdn.example.com/outro.png',
+  add_outro_animation: true,
+  add_outro_focus_area: true,
+  outro_focust_area: { x: 680, y: 296, width: 432, height: 432 },
+});
+
+// Create a video and generate the QR outro server-side from the input images
+await samsar.createVideoFromImageList({
+  image_urls: [
+    { image_url: 'https://example.com/a.jpg', title: 'Blue Lagoon Tour' },
+    { image_url: 'https://example.com/b.jpg', title: 'Sunset Dinner' },
+  ],
+  prompt: 'Travel offer reel with a scannable booking outro',
+  video_model: 'RUNWAYML',
+  aspect_ratio: '9:16',
+  generate_outro_image: true,
+  cta_url: 'https://example.com/book',
+  cta_text_top: 'Scan to book',
+  cta_text_bottom: 'Limited availability',
+  cta_logo: 'https://cdn.example.com/logo-white.png',
+  add_footer_animation: true,
+  footer_metadata: [
+    { url: 'https://example.com/blue-lagoon', title: 'Blue Lagoon Tour' },
+    { url: 'https://example.com/sunset-dinner', title: 'Sunset Dinner' },
+  ],
+});
 
 // Translate an existing video session into another language
 const translated = await samsar.translateVideo(
@@ -324,7 +359,7 @@ await platform.setExternalAssistantSystemPrompt(
 // Create a render attributed to that external user
 const externalRender = await platform.createExternalVideoFromText(externalUser, {
   prompt: 'A sleek teaser for a futuristic running shoe',
-  image_model: 'GPTIMAGE1',
+  image_model: 'GPTIMAGE2',
   video_model: 'RUNWAYML',
   duration: 10,
   enable_subtitles: true,
@@ -391,9 +426,12 @@ console.log(externalLibrary.data.requests.map((request) => request.request_id));
 ```
 
 Video model support notes:
-- `createVideoFromText` image model keys include: `GPTIMAGE1`, `IMAGEN4`, `SEEDREAM`, `HUNYUAN`, `NANOBANANA2`.
-- `createVideoFromText` supports all express video models: `RUNWAYML`, `KLINGIMGTOVID3PRO`, `HAILUO`, `HAILUOPRO`, `SEEDANCEI2V`, `VEO3.1I2V`, `VEO3.1I2VFAST`, `SORA2`, `SORA2PRO`.
-- `createVideoFromImageList` uses a fixed Veo2.1 pipeline model (`VEO3.1I2V`) and does not accept a `video_model` override.
+- `createVideoFromText` image model keys include: `GPTIMAGE2`, `IMAGEN4`, `SEEDREAM`, `HUNYUAN`, `NANOBANANA2`.
+- `createVideoFromText` supports all express video models: `RUNWAYML`, `KLINGIMGTOVID3PRO`, `HAILUO`, `HAILUOPRO`, `SEEDANCEI2V` (Seedance 2.0), `VEO3.1I2V`, `VEO3.1I2VFAST`, `SORA2`, `SORA2PRO`.
+- `createVideoFromImageList` supports `VEO3.1I2V`, `SEEDANCEI2V`, `KLING3.0`, and `RUNWAYML` via `video_model`; if omitted, it defaults to `VEO3.1I2V`. `KLINGIMGTOVID3PRO` is also accepted as a compatibility alias for `KLING3.0`. Use `aspect_ratio: '16:9'` or `'9:16'`; omitted or invalid values fall back to `16:9`.
+- `createVideoFromImageList` accepts either a provided outro (`outro_image_url`) or server-generated QR outro (`generate_outro_image: true` with `cta_url`). Do not combine the two modes in a single request.
+- `createVideoFromImageList` can render per-scene footer QR cards by setting `add_footer_animation: true` and providing one `footer_metadata` item per image scene.
+- Image-list video pricing is per rendered second: `VEO3.1I2V` and `SEEDANCEI2V` are 75 credits/sec, `KLING3.0` is 50 credits/sec, and `RUNWAYML` is 25 credits/sec.
 
 Each method returns `{ data, status, headers, creditsCharged, creditsRemaining, raw }`. Non-2xx responses throw `SamsarRequestError` containing status, body, and credit headers (if present).
 

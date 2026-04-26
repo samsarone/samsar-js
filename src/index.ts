@@ -78,6 +78,20 @@ export interface OutroFocusArea {
   height: number;
 }
 
+export interface FooterMetadataItem {
+  url: string;
+  title?: string;
+}
+
+export type ImageListToVideoAspectRatio = '16:9' | '9:16';
+
+export type ImageListToVideoModel =
+  | 'VEO3.1I2V'
+  | 'SEEDANCEI2V'
+  | 'KLING3.0'
+  | 'KLINGIMGTOVID3PRO'
+  | 'RUNWAYML';
+
 export interface ImageListToVideoItem {
   image_url?: string;
   imageUrl?: string;
@@ -93,6 +107,16 @@ export interface ImageListToVideoItem {
   fromEnhancedList?: boolean;
   skip_enhancement?: boolean;
   skipEnhancement?: boolean;
+  source?: string;
+  title?: string;
+  image_title?: string;
+  imageTitle?: string;
+  image_text?: string;
+  imageText?: string;
+  activity_title?: string;
+  activityTitle?: string;
+  name?: string;
+  label?: string;
   [key: string]: unknown;
 }
 
@@ -100,6 +124,9 @@ export interface CreateVideoFromImageListInput {
   image_urls: Array<string | ImageListToVideoItem>;
   metadata?: Record<string, unknown>;
   prompt?: string;
+  video_model?: ImageListToVideoModel;
+  aspect_ratio?: ImageListToVideoAspectRatio;
+  aspectRatio?: ImageListToVideoAspectRatio;
   language?: string;
   languageString?: string | null;
   font_key?: string;
@@ -113,9 +140,29 @@ export interface CreateVideoFromImageListInput {
   sessionId?: string;
   sessionID?: string;
   outro_image_url?: string;
+  outroImageUrl?: string;
   add_outro_animation?: boolean;
+  addOutroAnimation?: boolean;
   add_outro_focus_area?: boolean;
+  addOutroFocusArea?: boolean;
   outro_focust_area?: OutroFocusArea | null;
+  outro_focus_area?: OutroFocusArea | null;
+  outroFocustArea?: OutroFocusArea | null;
+  outroFocusArea?: OutroFocusArea | null;
+  generate_outro_image?: boolean;
+  generateOutroImage?: boolean;
+  cta_url?: string;
+  ctaUrl?: string;
+  cta_text_top?: string;
+  ctaTextTop?: string;
+  cta_text_bottom?: string;
+  ctaTextBottom?: string;
+  cta_logo?: string;
+  ctaLogo?: string;
+  add_footer_animation?: boolean;
+  addFooterAnimation?: boolean;
+  footer_metadata?: FooterMetadataItem[];
+  footerMetadata?: FooterMetadataItem[];
   [key: string]: unknown;
 }
 
@@ -1461,6 +1508,87 @@ export class SamsarRequestError extends Error {
   }
 }
 
+function resolveAliasedInputValue(
+  raw: Record<string, unknown>,
+  aliases: string[],
+  canonicalName: string,
+): unknown {
+  let resolved: unknown;
+  let hasResolved = false;
+
+  for (const alias of aliases) {
+    const value = raw[alias];
+    if (value === undefined) {
+      continue;
+    }
+    if (!hasResolved) {
+      resolved = value;
+      hasResolved = true;
+      continue;
+    }
+    if (value !== resolved) {
+      throw new Error(`${canonicalName} was provided with conflicting alias values.`);
+    }
+  }
+
+  return hasResolved ? resolved : undefined;
+}
+
+function assertOptionalBoolean(value: unknown, fieldName: string): void {
+  if (value !== undefined && typeof value !== 'boolean') {
+    throw new Error(`${fieldName} must be a boolean for createVideoFromImageList`);
+  }
+}
+
+function normalizeCreateVideoFromImageListInput(
+  input: CreateVideoFromImageListInput,
+): CreateVideoFromImageListInput {
+  const raw = input as Record<string, unknown>;
+  if (!Array.isArray(input.image_urls) || input.image_urls.length === 0) {
+    throw new Error('image_urls must be a non-empty array for createVideoFromImageList');
+  }
+
+  const normalized: Record<string, unknown> = { ...input };
+  const aliases: Array<[string, string[]]> = [
+    ['session_id', ['session_id', 'sessionId', 'sessionID']],
+    ['aspect_ratio', ['aspect_ratio', 'aspectRatio']],
+    ['outro_image_url', ['outro_image_url', 'outroImageUrl']],
+    ['add_outro_animation', ['add_outro_animation', 'addOutroAnimation']],
+    ['add_outro_focus_area', ['add_outro_focus_area', 'addOutroFocusArea']],
+    ['outro_focust_area', ['outro_focust_area', 'outro_focus_area', 'outroFocustArea', 'outroFocusArea']],
+    ['generate_outro_image', ['generate_outro_image', 'generateOutroImage']],
+    ['cta_url', ['cta_url', 'ctaUrl']],
+    ['cta_text_top', ['cta_text_top', 'ctaTextTop']],
+    ['cta_text_bottom', ['cta_text_bottom', 'ctaTextBottom']],
+    ['cta_logo', ['cta_logo', 'ctaLogo']],
+    ['enable_subtitles', ['enable_subtitles', 'enableSubtitles']],
+    ['font_key', ['font_key', 'fontKey']],
+  ];
+
+  for (const [canonicalName, aliasList] of aliases) {
+    const value = resolveAliasedInputValue(raw, aliasList, canonicalName);
+    if (value !== undefined) {
+      normalized[canonicalName] = value;
+    }
+  }
+
+  assertOptionalBoolean(normalized.enable_subtitles, 'enable_subtitles');
+  assertOptionalBoolean(normalized.add_outro_animation, 'add_outro_animation');
+  assertOptionalBoolean(normalized.add_outro_focus_area, 'add_outro_focus_area');
+  assertOptionalBoolean(normalized.generate_outro_image, 'generate_outro_image');
+
+  if (normalized.generate_outro_image === true) {
+    const ctaUrl = typeof normalized.cta_url === 'string' ? normalized.cta_url.trim() : '';
+    if (!ctaUrl) {
+      throw new Error('cta_url is required when generate_outro_image is true for createVideoFromImageList');
+    }
+  } else if (normalized.add_outro_focus_area === true && normalized.add_outro_animation !== true) {
+    throw new Error('add_outro_focus_area requires add_outro_animation to be true for createVideoFromImageList');
+  }
+
+  return normalized as CreateVideoFromImageListInput;
+}
+
 export class SamsarClient {
   private readonly apiKey: string;
   private readonly baseUrl: string;
@@ -1510,8 +1638,9 @@ export class SamsarClient {
     input: CreateVideoFromImageListInput,
     options?: { webhookUrl?: string } & SamsarRequestOptions,
   ): Promise<SamsarResult<CreateVideoFromImageListResponse>> {
+    const normalizedInput = normalizeCreateVideoFromImageListInput(input);
     const body = {
-      input,
+      input: normalizedInput,
       webhookUrl: options?.webhookUrl,
     };
 
@@ -1593,9 +1722,10 @@ export class SamsarClient {
     input: CreateVideoFromImageListInput,
     options?: { webhookUrl?: string } & SamsarRequestOptions,
   ): Promise<SamsarResult<ExternalRequestResponse>> {
+    const normalizedInput = normalizeCreateVideoFromImageListInput(input);
     const body = {
       external_user: normalizeExternalUserIdentity(externalUser),
-      input,
+      input: normalizedInput,
       webhookUrl: options?.webhookUrl,
     };
 
