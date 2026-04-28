@@ -9,7 +9,7 @@ type QueryValue = string | number | boolean | null | undefined;
 type QueryParams = Record<string, QueryValue>;
 
 export interface SamsarClientOptions {
-  apiKey: string;
+  apiKey?: string;
   baseUrl?: string;
   timeoutMs?: number;
   fetch?: FetchLike;
@@ -1475,6 +1475,67 @@ export interface V2RequestsListResponse {
   [key: string]: unknown;
 }
 
+export interface V2UserRechargeCreditsRequest {
+  amount: number;
+  email: string;
+  redirect_url?: string;
+  redirectUrl?: string;
+  [key: string]: unknown;
+}
+
+export interface V2UserRechargeCreditsResponse {
+  url: string;
+  checkoutSessionId?: string | null;
+  paymentStatusEndpoint?: string;
+  amount: number;
+  amountCents: number;
+  credits: number;
+  currency: string;
+  redirectUrl?: string;
+  [key: string]: unknown;
+}
+
+export interface V2UserTokenRefreshRequest {
+  refreshToken?: string;
+  refresh_token?: string;
+}
+
+export interface V2UserTokenResponse {
+  tokenType?: 'Bearer' | string;
+  authToken: string;
+  refreshToken: string;
+  expiryDate: string;
+  expiresInSeconds?: number;
+  refreshTokenExpiresAt?: string;
+  [key: string]: unknown;
+}
+
+export interface UsageLogItem {
+  id?: string;
+  source?: string;
+  credits?: number;
+  balanceAfter?: number | null;
+  metadata?: Record<string, unknown>;
+  direction?: string;
+  createdAt?: string;
+  updatedAt?: string;
+  [key: string]: unknown;
+}
+
+export interface UsageLogsResponse {
+  items: UsageLogItem[];
+  pagination?: {
+    page?: number;
+    pageSize?: number;
+    totalItems?: number;
+    totalPages?: number;
+    hasNextPage?: boolean;
+    hasPreviousPage?: boolean;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
 export interface ExternalArchiveResponse {
   request?: ExternalRequestSummary | null;
   external_user?: ExternalUserSummary | null;
@@ -1998,7 +2059,7 @@ function normalizeSessionPublicationInput(
 }
 
 export class SamsarClient {
-  private readonly apiKey: string;
+  private readonly apiKey?: string;
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
   private readonly fetchFn: FetchLike;
@@ -2006,11 +2067,7 @@ export class SamsarClient {
   private readonly externalUserApiKey?: string;
 
   constructor(options: SamsarClientOptions) {
-    if (!options?.apiKey) {
-      throw new Error('apiKey is required to initialize SamsarClient');
-    }
-
-    this.apiKey = options.apiKey;
+    this.apiKey = options?.apiKey?.trim() || undefined;
     this.baseUrl = trimTrailingSlash(options.baseUrl ?? DEFAULT_BASE_URL);
     this.timeoutMs = options.timeoutMs ?? 30000;
     this.fetchFn = options.fetch ?? (globalThis.fetch as FetchLike);
@@ -2064,8 +2121,112 @@ export class SamsarClient {
     return this.getV2<CreditsBalanceResponse | ExternalCreditsBalanceResponse>('credits', options);
   }
 
+  async getV2UserCredits(options?: V2RequestOptions): Promise<SamsarResult<CreditsBalanceResponse>> {
+    return this.getV2<CreditsBalanceResponse>('user/credits', options);
+  }
+
+  async getV2UserUsageLogs(
+    options?: V2RequestOptions & { page?: number; pageSize?: number; limit?: number },
+  ): Promise<SamsarResult<UsageLogsResponse>> {
+    const query: QueryParams = {
+      ...(options?.query ?? {}),
+    };
+    if (options?.page !== undefined) {
+      query.page = options.page;
+    }
+    if (options?.pageSize !== undefined) {
+      query.pageSize = options.pageSize;
+    }
+    if (options?.limit !== undefined) {
+      query.limit = options.limit;
+    }
+
+    return this.getV2<UsageLogsResponse>('user/usage/logs', {
+      ...(options ?? {}),
+      query,
+    });
+  }
+
   async listV2Requests(options?: V2RequestOptions): Promise<SamsarResult<V2RequestsListResponse>> {
     return this.getV2<V2RequestsListResponse>('requests', options);
+  }
+
+  async createV2UserRechargeCredits(
+    payload: V2UserRechargeCreditsRequest,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<V2UserRechargeCreditsResponse>> {
+    const amount = Number(payload?.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      throw new Error('amount must be a positive dollar amount');
+    }
+    if (!payload?.email || typeof payload.email !== 'string') {
+      throw new Error('email is required');
+    }
+    const redirectUrl = payload.redirect_url ?? payload.redirectUrl;
+    if (!redirectUrl || typeof redirectUrl !== 'string') {
+      throw new Error('redirect_url is required');
+    }
+
+    return this.postV2<V2UserRechargeCreditsResponse>(
+      'user/recharge_credits',
+      {
+        ...payload,
+        amount,
+        email: payload.email.trim(),
+        redirect_url: redirectUrl.trim(),
+      },
+      options,
+    );
+  }
+
+  async refreshV2UserToken(
+    payload: string | V2UserTokenRefreshRequest,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<V2UserTokenResponse>> {
+    const refreshToken =
+      typeof payload === 'string'
+        ? payload
+        : (payload?.refreshToken ?? payload?.refresh_token);
+
+    if (!refreshToken || typeof refreshToken !== 'string') {
+      throw new Error('refreshToken is required');
+    }
+
+    return this.postV2<V2UserTokenResponse>(
+      'user/refresh_token',
+      { refreshToken: refreshToken.trim() },
+      options,
+    );
+  }
+
+  async refreshV2UserAuthToken(
+    payload: string | V2UserTokenRefreshRequest,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<V2UserTokenResponse>> {
+    return this.refreshV2UserToken(payload, options);
+  }
+
+  async getV2UserPaymentStatus(
+    payload: PaymentStatusRequest,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<PaymentStatusResponse>> {
+    const query: QueryParams = {
+      ...(options?.query ?? {}),
+    };
+    if (payload?.checkoutSessionId) {
+      query.checkoutSessionId = payload.checkoutSessionId;
+    }
+    if (payload?.paymentIntentId) {
+      query.paymentIntentId = payload.paymentIntentId;
+    }
+    if (payload?.setupIntentId) {
+      query.setupIntentId = payload.setupIntentId;
+    }
+
+    return this.getV2<PaymentStatusResponse>('user/payment_status', {
+      ...(options ?? {}),
+      query,
+    });
   }
 
   async createV2LoginToken(
@@ -3936,7 +4097,7 @@ export class SamsarClient {
 
   private buildHeaders(options: SamsarRequestOptions & { method: string; body?: BodyInit | null }) {
     const headers: Record<string, string | undefined> = {
-      Authorization: `Bearer ${this.apiKey}`,
+      Authorization: this.apiKey ? `Bearer ${this.apiKey}` : undefined,
       'Content-Type': options.body ? 'application/json' : undefined,
       'x-external-user-api-key': options.externalUserApiKey ?? this.externalUserApiKey,
       ...this.defaultHeaders,

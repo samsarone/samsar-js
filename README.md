@@ -512,6 +512,7 @@ Video model support notes:
 Upcoming `/v2` omni route adapters:
 - `/v2` is additive; `/v1` is not deprecated.
 - `createV2VideoFromText`, `createV2VideoFromImageList`, `updateV2VideoOutroImage`, `addV2VideoOutroImage`, `getV2Status`, `getV2Credits`, `listV2Requests`, and `createV2Session` call the new omni route surface.
+- Programmatic user billing helpers include `createV2UserRechargeCredits`, `refreshV2UserToken`, `getV2UserCredits`, `getV2UserUsageLogs`, and `getV2UserPaymentStatus`.
 - Omit `externalUser` for internal account billing, pass `externalUser` to scope an external user with the account API key, or authenticate the client directly with an external-user auth token/API key.
 
 ```ts
@@ -533,6 +534,26 @@ const v2ExternalVideo = await platform.createV2VideoFromImageList(
 
 const v2Status = await platform.getV2Status(v2Video.data.request_id!);
 console.log(v2Status.data.status);
+```
+
+Programmatic user recharge and OAuth-style refresh token rotation:
+
+```ts
+const publicClient = new SamsarClient({});
+
+const checkout = await publicClient.createV2UserRechargeCredits({
+  amount: 25,
+  email: 'customer@example.com',
+  redirect_url: 'https://example.com/samsar/callback',
+});
+
+// After the Stripe webhook calls your redirect_url with authToken, refreshToken, and expiryDate:
+const userClient = new SamsarClient({ apiKey: authToken });
+const refreshed = await userClient.refreshV2UserToken(refreshToken);
+
+localStorage.setItem('authToken', refreshed.data.authToken);
+localStorage.setItem('refreshToken', refreshed.data.refreshToken);
+localStorage.setItem('expiryDate', refreshed.data.expiryDate);
 ```
 
 Each method returns `{ data, status, headers, creditsCharged, creditsRemaining, raw }`. Non-2xx responses throw `SamsarRequestError` containing status, body, and credit headers (if present).
