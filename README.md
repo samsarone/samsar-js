@@ -43,6 +43,21 @@ const video = await samsar.createVideoFromText(
   { webhookUrl: 'https://example.com/webhook' },
 );
 
+// Create a text video with a generated QR outro and bottom CTA footer
+await samsar.createVideoFromText({
+  prompt: 'A boutique hotel launch reel with cinematic room details',
+  image_model: 'GPTIMAGE2',
+  video_model: 'RUNWAYML',
+  duration: 20,
+  aspect_ratio: '9:16',
+  generate_outro_image: true,
+  cta_url: 'https://example.com/book',
+  cta_text_top: 'Scan to book',
+  cta_text_bottom: 'Opening offers',
+  add_footer_animation: true,
+  footer_metadata: [{ url: 'https://example.com/book', title: 'Book your stay' }],
+});
+
 // Create a video from an image list
 const videoFromImages = await samsar.createVideoFromImageList(
   {
@@ -90,6 +105,31 @@ await samsar.createVideoFromImageList({
     { url: 'https://example.com/sunset-dinner', title: 'Sunset Dinner' },
   ],
 });
+
+// Update an existing outro with a new provided outro image URL
+await samsar.updateVideoOutroImage(
+  {
+    videoSessionId: videoFromImages.data.session_id ?? videoFromImages.data.request_id!,
+    outro_image_url: 'https://cdn.example.com/outro-v2.png',
+    add_outro_animation: true,
+    add_outro_focus_area: true,
+    outro_focust_area: { x: 680, y: 296, width: 432, height: 432 },
+  },
+  { webhookUrl: 'https://example.com/webhook' },
+);
+
+// Update an existing outro by generating a new QR CTA outro server-side
+await samsar.updateVideoOutroImage(
+  {
+    videoSessionId: videoFromImages.data.session_id ?? videoFromImages.data.request_id!,
+    generate_outro_image: true,
+    cta_url: 'https://example.com/book',
+    cta_text_top: 'Scan to book',
+    cta_text_bottom: 'Limited availability',
+    add_outro_animation: true,
+  },
+  { webhookUrl: 'https://example.com/webhook' },
+);
 
 // Translate an existing video session into another language
 const translated = await samsar.translateVideo(
@@ -302,6 +342,24 @@ completedSessions.data.forEach((session) => {
   console.log(session.session_id, session.langauge, session.result_url);
 });
 
+// Publish, edit, or revoke a completed session in the public publication feed (free endpoints)
+const publication = await samsar.publishPublication({
+  session_id: videoFromImages.data.session_id ?? videoFromImages.data.request_id!,
+  title: 'Running shoe teaser',
+  description: 'Launch-day vertical cut',
+  tags: ['launch', 'footwear'],
+  creator_handle: 'acme',
+});
+console.log(publication.data.publication?.publication_id);
+
+await samsar.editPublication({
+  session_id: videoFromImages.data.session_id ?? videoFromImages.data.request_id!,
+  title: 'Running shoe teaser - updated',
+  tags: ['launch', 'footwear', 'campaign'],
+});
+
+await samsar.revokePublication(videoFromImages.data.session_id ?? videoFromImages.data.request_id!);
+
 // Image-specific status endpoint
 const rollupStatus = await samsar.getImageStatus(rollup.data.session_id);
 
@@ -428,9 +486,12 @@ console.log(externalLibrary.data.requests.map((request) => request.request_id));
 Video model support notes:
 - `createVideoFromText` image model keys include: `GPTIMAGE2`, `IMAGEN4`, `SEEDREAM`, `HUNYUAN`, `NANOBANANA2`.
 - `createVideoFromText` supports all express video models: `RUNWAYML`, `KLINGIMGTOVID3PRO`, `HAILUO`, `HAILUOPRO`, `SEEDANCEI2V` (Seedance 2.0), `VEO3.1I2V`, `VEO3.1I2VFAST`, `SORA2`, `SORA2PRO`.
+- `createVideoFromText` accepts either a provided outro (`outro_image_url`) or server-generated QR outro (`generate_outro_image: true` with `cta_url`). It can also render bottom CTA footer QR cards with `add_footer_animation` and `footer_metadata`; one footer item applies to every generated scene, while multiple items map by scene index.
 - `createVideoFromImageList` supports `VEO3.1I2V`, `SEEDANCEI2V`, `KLING3.0`, and `RUNWAYML` via `video_model`; if omitted, it defaults to `VEO3.1I2V`. `KLINGIMGTOVID3PRO` is also accepted as a compatibility alias for `KLING3.0`. Use `aspect_ratio: '16:9'` or `'9:16'`; omitted or invalid values fall back to `16:9`.
 - `createVideoFromImageList` accepts either a provided outro (`outro_image_url`) or server-generated QR outro (`generate_outro_image: true` with `cta_url`). Do not combine the two modes in a single request.
 - `createVideoFromImageList` can render per-scene footer QR cards by setting `add_footer_animation: true` and providing one `footer_metadata` item per image scene.
+- `updateVideoOutroImage` accepts either a replacement outro image URL (`outro_image_url`, `outroImageUrl`, `new_outro_image_url`) or a generated QR CTA outro (`generate_outro_image: true` with `cta_url`, or just `cta_url` when no outro image URL is supplied). Generated outro updates reuse the existing session image layers for tiling and only queue frame/video regeneration.
+- `publishPublication`, `editPublication`, and `revokePublication` manage public feed publications for completed sessions through free `/publications/*` endpoints. They work with account API keys, customer sub-account API keys, and client auth tokens when the session belongs to the authenticated actor.
 - Image-list video pricing is per rendered second: `VEO3.1I2V` and `SEEDANCEI2V` are 75 credits/sec, `KLING3.0` is 50 credits/sec, and `RUNWAYML` is 25 credits/sec.
 
 Each method returns `{ data, status, headers, creditsCharged, creditsRemaining, raw }`. Non-2xx responses throw `SamsarRequestError` containing status, body, and credit headers (if present).

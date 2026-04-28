@@ -61,6 +61,30 @@ export interface CreateVideoFromTextInput {
   session_id?: string;
   sessionId?: string;
   sessionID?: string;
+  outro_image_url?: string;
+  outroImageUrl?: string;
+  add_outro_animation?: boolean;
+  addOutroAnimation?: boolean;
+  add_outro_focus_area?: boolean;
+  addOutroFocusArea?: boolean;
+  outro_focust_area?: OutroFocusArea | null;
+  outro_focus_area?: OutroFocusArea | null;
+  outroFocustArea?: OutroFocusArea | null;
+  outroFocusArea?: OutroFocusArea | null;
+  generate_outro_image?: boolean;
+  generateOutroImage?: boolean;
+  cta_url?: string;
+  ctaUrl?: string;
+  cta_text_top?: string;
+  ctaTextTop?: string;
+  cta_text_bottom?: string;
+  ctaTextBottom?: string;
+  cta_logo?: string;
+  ctaLogo?: string;
+  add_footer_animation?: boolean;
+  addFooterAnimation?: boolean;
+  footer_metadata?: FooterMetadataItem[];
+  footerMetadata?: FooterMetadataItem[];
   [key: string]: unknown;
 }
 
@@ -232,6 +256,24 @@ export interface UpdateVideoOutroImageInput {
   outroImageUrl?: string;
   new_outro_image_url?: string;
   newOutroImageUrl?: string;
+  add_outro_animation?: boolean;
+  addOutroAnimation?: boolean;
+  add_outro_focus_area?: boolean;
+  addOutroFocusArea?: boolean;
+  outro_focust_area?: OutroFocusArea | null;
+  outro_focus_area?: OutroFocusArea | null;
+  outroFocustArea?: OutroFocusArea | null;
+  outroFocusArea?: OutroFocusArea | null;
+  generate_outro_image?: boolean;
+  generateOutroImage?: boolean;
+  cta_url?: string;
+  ctaUrl?: string;
+  cta_text_top?: string;
+  ctaTextTop?: string;
+  cta_text_bottom?: string;
+  ctaTextBottom?: string;
+  cta_logo?: string;
+  ctaLogo?: string;
   [key: string]: unknown;
 }
 
@@ -356,6 +398,100 @@ export interface CompletedVideoSession {
 }
 
 export type ListCompletedVideoSessionsResponse = CompletedVideoSession[];
+
+export interface SessionPublicationInput {
+  session_id?: string;
+  sessionId?: string;
+  sessionID?: string;
+  video_session_id?: string;
+  videoSessionId?: string;
+  videoSessionID?: string;
+  id?: string;
+  title?: string;
+  description?: string;
+  tags?: string[] | string;
+  aspect_ratio?: string;
+  aspectRatio?: string;
+  creator_handle?: string;
+  creatorHandle?: string;
+  slug?: string;
+  image_hash?: string;
+  imageHash?: string;
+  splash_image?: string;
+  splashImage?: string;
+  image_model?: string;
+  imageModel?: string;
+  video_model?: string;
+  videoModel?: string;
+  original_prompt?: string;
+  originalPrompt?: string;
+  prompt?: string;
+  session_language?: string;
+  sessionLanguage?: string;
+  language?: string;
+  language_code?: string;
+  languageString?: string;
+  language_string?: string;
+  [key: string]: unknown;
+}
+
+export interface SessionPublicationSummary {
+  id?: string | null;
+  publication_id?: string | null;
+  session_id?: string | null;
+  sessionId?: string | null;
+  video_url?: string | null;
+  videoUrl?: string | null;
+  title?: string | null;
+  description?: string;
+  tags?: string[];
+  creator_handle?: string;
+  creatorHandle?: string;
+  slug?: string | null;
+  image_hash?: string | null;
+  imageHash?: string | null;
+  splash_image?: string | null;
+  splashImage?: string | null;
+  image_model?: string | null;
+  imageModel?: string | null;
+  video_model?: string | null;
+  videoModel?: string | null;
+  original_prompt?: string;
+  originalPrompt?: string;
+  session_language?: string | null;
+  sessionLanguage?: string | null;
+  language_string?: string | null;
+  languageString?: string | null;
+  aspect_ratio?: string | null;
+  aspectRatio?: string | null;
+  created_at?: string | null;
+  createdAt?: string | null;
+  updated_at?: string | null;
+  updatedAt?: string | null;
+  [key: string]: unknown;
+}
+
+export interface SessionPublicationSessionSummary {
+  id?: string | null;
+  session_id?: string | null;
+  is_published?: boolean;
+  published_publication_id?: string | null;
+  published_video_url?: string | null;
+  published_at?: string | null;
+  [key: string]: unknown;
+}
+
+export interface SessionPublicationResponse {
+  created?: boolean;
+  revoked?: boolean;
+  publication_id?: string | null;
+  publication?: SessionPublicationSummary | null;
+  session?: SessionPublicationSessionSummary | null;
+  sessionId?: string;
+  session_id?: string;
+  ispublishedVideo?: boolean;
+  [key: string]: unknown;
+}
 
 export interface SupportedTextToVideoModelsResponse {
   IMAGE_MODELS: SupportedTextToVideoModelOption[];
@@ -1534,10 +1670,60 @@ function resolveAliasedInputValue(
   return hasResolved ? resolved : undefined;
 }
 
-function assertOptionalBoolean(value: unknown, fieldName: string): void {
+function assertOptionalBoolean(
+  value: unknown,
+  fieldName: string,
+  context = 'createVideoFromImageList',
+): void {
   if (value !== undefined && typeof value !== 'boolean') {
-    throw new Error(`${fieldName} must be a boolean for createVideoFromImageList`);
+    throw new Error(`${fieldName} must be a boolean for ${context}`);
   }
+}
+
+function normalizeCreateVideoFromTextInput(input: CreateVideoFromTextInput): CreateVideoFromTextInput {
+  const raw = input as Record<string, unknown>;
+  const normalized: Record<string, unknown> = { ...input };
+  const aliases: Array<[string, string[]]> = [
+    ['session_id', ['session_id', 'sessionId', 'sessionID']],
+    ['aspect_ratio', ['aspect_ratio', 'aspectRatio']],
+    ['outro_image_url', ['outro_image_url', 'outroImageUrl']],
+    ['add_outro_animation', ['add_outro_animation', 'addOutroAnimation']],
+    ['add_outro_focus_area', ['add_outro_focus_area', 'addOutroFocusArea']],
+    ['outro_focust_area', ['outro_focust_area', 'outro_focus_area', 'outroFocustArea', 'outroFocusArea']],
+    ['generate_outro_image', ['generate_outro_image', 'generateOutroImage']],
+    ['cta_url', ['cta_url', 'ctaUrl']],
+    ['cta_text_top', ['cta_text_top', 'ctaTextTop']],
+    ['cta_text_bottom', ['cta_text_bottom', 'ctaTextBottom']],
+    ['cta_logo', ['cta_logo', 'ctaLogo']],
+    ['add_footer_animation', ['add_footer_animation', 'addFooterAnimation']],
+    ['footer_metadata', ['footer_metadata', 'footerMetadata']],
+    ['enable_subtitles', ['enable_subtitles', 'enableSubtitles']],
+    ['font_key', ['font_key', 'fontKey']],
+  ];
+
+  for (const [canonicalName, aliasList] of aliases) {
+    const value = resolveAliasedInputValue(raw, aliasList, canonicalName);
+    if (value !== undefined) {
+      normalized[canonicalName] = value;
+    }
+  }
+
+  assertOptionalBoolean(normalized.enable_subtitles, 'enable_subtitles', 'createVideoFromText');
+  assertOptionalBoolean(normalized.add_outro_animation, 'add_outro_animation', 'createVideoFromText');
+  assertOptionalBoolean(normalized.add_outro_focus_area, 'add_outro_focus_area', 'createVideoFromText');
+  assertOptionalBoolean(normalized.generate_outro_image, 'generate_outro_image', 'createVideoFromText');
+  assertOptionalBoolean(normalized.add_footer_animation, 'add_footer_animation', 'createVideoFromText');
+
+  if (normalized.generate_outro_image === true) {
+    const ctaUrl = typeof normalized.cta_url === 'string' ? normalized.cta_url.trim() : '';
+    if (!ctaUrl) {
+      throw new Error('cta_url is required when generate_outro_image is true for createVideoFromText');
+    }
+  } else if (normalized.add_outro_focus_area === true && normalized.add_outro_animation !== true) {
+    throw new Error('add_outro_focus_area requires add_outro_animation to be true for createVideoFromText');
+  }
+
+  return normalized as CreateVideoFromTextInput;
 }
 
 function normalizeCreateVideoFromImageListInput(
@@ -1561,6 +1747,8 @@ function normalizeCreateVideoFromImageListInput(
     ['cta_text_top', ['cta_text_top', 'ctaTextTop']],
     ['cta_text_bottom', ['cta_text_bottom', 'ctaTextBottom']],
     ['cta_logo', ['cta_logo', 'ctaLogo']],
+    ['add_footer_animation', ['add_footer_animation', 'addFooterAnimation']],
+    ['footer_metadata', ['footer_metadata', 'footerMetadata']],
     ['enable_subtitles', ['enable_subtitles', 'enableSubtitles']],
     ['font_key', ['font_key', 'fontKey']],
   ];
@@ -1576,6 +1764,7 @@ function normalizeCreateVideoFromImageListInput(
   assertOptionalBoolean(normalized.add_outro_animation, 'add_outro_animation');
   assertOptionalBoolean(normalized.add_outro_focus_area, 'add_outro_focus_area');
   assertOptionalBoolean(normalized.generate_outro_image, 'generate_outro_image');
+  assertOptionalBoolean(normalized.add_footer_animation, 'add_footer_animation');
 
   if (normalized.generate_outro_image === true) {
     const ctaUrl = typeof normalized.cta_url === 'string' ? normalized.cta_url.trim() : '';
@@ -1587,6 +1776,76 @@ function normalizeCreateVideoFromImageListInput(
   }
 
   return normalized as CreateVideoFromImageListInput;
+}
+
+function normalizeSessionPublicationInput(
+  input: string | SessionPublicationInput,
+  context: string,
+): Record<string, unknown> {
+  if (typeof input !== 'string' && (!input || typeof input !== 'object' || Array.isArray(input))) {
+    throw new Error(`input must be a session id or object for ${context}`);
+  }
+
+  const raw: Record<string, unknown> = typeof input === 'string' ? { session_id: input } : { ...input };
+  const sessionId = resolveAliasedInputValue(
+    raw,
+    [
+      'session_id',
+      'sessionId',
+      'sessionID',
+      'video_session_id',
+      'videoSessionId',
+      'videoSessionID',
+      'id',
+    ],
+    'session_id',
+  );
+
+  const normalizedSessionId = typeof sessionId === 'string' ? sessionId.trim() : '';
+  if (!normalizedSessionId) {
+    throw new Error(`session_id is required for ${context}`);
+  }
+
+  const normalized: Record<string, unknown> = {
+    ...raw,
+    session_id: normalizedSessionId,
+  };
+
+  const aliases: Array<[string, string[]]> = [
+    ['aspect_ratio', ['aspect_ratio', 'aspectRatio']],
+    ['creator_handle', ['creator_handle', 'creatorHandle']],
+    ['image_hash', ['image_hash', 'imageHash']],
+    ['splash_image', ['splash_image', 'splashImage']],
+    ['image_model', ['image_model', 'imageModel']],
+    ['video_model', ['video_model', 'videoModel']],
+    ['original_prompt', ['original_prompt', 'originalPrompt', 'prompt']],
+    ['session_language', ['session_language', 'sessionLanguage', 'language', 'language_code']],
+    ['language_string', ['language_string', 'languageString']],
+  ];
+
+  for (const [canonicalName, aliasList] of aliases) {
+    const value = resolveAliasedInputValue(raw, aliasList, canonicalName);
+    if (value !== undefined) {
+      normalized[canonicalName] = value;
+    }
+  }
+
+  if (
+    normalized.tags !== undefined &&
+    !Array.isArray(normalized.tags) &&
+    typeof normalized.tags !== 'string'
+  ) {
+    throw new Error(`tags must be a string or string array for ${context}`);
+  }
+
+  if (Array.isArray(normalized.tags)) {
+    normalized.tags = normalized.tags
+      .filter((tag): tag is string => typeof tag === 'string')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  }
+
+  return normalized;
 }
 
 export class SamsarClient {
@@ -1623,8 +1882,9 @@ export class SamsarClient {
     input: CreateVideoFromTextInput,
     options?: { webhookUrl?: string } & SamsarRequestOptions,
   ): Promise<SamsarResult<CreateVideoResponse>> {
+    const normalizedInput = normalizeCreateVideoFromTextInput(input);
     const body = {
-      input,
+      input: normalizedInput,
       webhookUrl: options?.webhookUrl,
     };
 
@@ -1683,9 +1943,10 @@ export class SamsarClient {
     input: CreateVideoFromTextInput,
     options?: { webhookUrl?: string } & SamsarRequestOptions,
   ): Promise<SamsarResult<ExternalRequestResponse>> {
+    const normalizedInput = normalizeCreateVideoFromTextInput(input);
     const body = {
       external_user: normalizeExternalUserIdentity(externalUser),
-      input,
+      input: normalizedInput,
       webhookUrl: options?.webhookUrl,
     };
 
@@ -2168,19 +2429,85 @@ export class SamsarClient {
       (raw.outroImageUrl as string | undefined) ??
       (raw.new_outro_image_url as string | undefined) ??
       (raw.newOutroImageUrl as string | undefined);
+    const rawGenerateOutroImage =
+      (raw.generate_outro_image as unknown) ??
+      (raw.generateOutroImage as unknown);
+    const rawAddOutroAnimation =
+      (raw.add_outro_animation as unknown) ??
+      (raw.addOutroAnimation as unknown);
+    const rawAddOutroFocusArea =
+      (raw.add_outro_focus_area as unknown) ??
+      (raw.addOutroFocusArea as unknown);
+    const rawOutroFocusArea =
+      (raw.outro_focust_area as unknown) ??
+      (raw.outro_focus_area as unknown) ??
+      (raw.outroFocustArea as unknown) ??
+      (raw.outroFocusArea as unknown);
+    const ctaUrl =
+      (raw.cta_url as string | undefined) ??
+      (raw.ctaUrl as string | undefined);
+    const ctaTextTop =
+      (raw.cta_text_top as string | undefined) ??
+      (raw.ctaTextTop as string | undefined);
+    const ctaTextBottom =
+      (raw.cta_text_bottom as string | undefined) ??
+      (raw.ctaTextBottom as string | undefined);
+    const ctaLogo =
+      (raw.cta_logo as string | undefined) ??
+      (raw.ctaLogo as string | undefined);
+    const generateOutroImage =
+      rawGenerateOutroImage === true ||
+      (rawGenerateOutroImage === undefined && !outroImageUrl && Boolean(ctaUrl));
 
     if (!videoSessionId) {
       throw new Error('videoSessionId is required for updateVideoOutroImage');
     }
-    if (!outroImageUrl) {
-      throw new Error('outro_image_url is required for updateVideoOutroImage');
+    if (rawGenerateOutroImage !== undefined && typeof rawGenerateOutroImage !== 'boolean') {
+      throw new Error('generate_outro_image must be a boolean for updateVideoOutroImage');
+    }
+    if (rawAddOutroAnimation !== undefined && typeof rawAddOutroAnimation !== 'boolean') {
+      throw new Error('add_outro_animation must be a boolean for updateVideoOutroImage');
+    }
+    if (rawAddOutroFocusArea !== undefined && typeof rawAddOutroFocusArea !== 'boolean') {
+      throw new Error('add_outro_focus_area must be a boolean for updateVideoOutroImage');
+    }
+    if (generateOutroImage && outroImageUrl) {
+      throw new Error('Use either generate_outro_image with cta_url or outro_image_url for updateVideoOutroImage');
+    }
+    if (!generateOutroImage && !outroImageUrl) {
+      throw new Error('outro_image_url is required for updateVideoOutroImage unless generate_outro_image is true');
+    }
+    if (generateOutroImage) {
+      if (!ctaUrl || !String(ctaUrl).trim()) {
+        throw new Error('cta_url is required when generate_outro_image is true for updateVideoOutroImage');
+      }
+    } else if (rawAddOutroFocusArea === true && rawAddOutroAnimation !== true) {
+      throw new Error('add_outro_focus_area requires add_outro_animation to be true for updateVideoOutroImage');
+    }
+    if (!generateOutroImage && rawAddOutroFocusArea === true) {
+      if (!rawOutroFocusArea || typeof rawOutroFocusArea !== 'object' || Array.isArray(rawOutroFocusArea)) {
+        throw new Error('outro_focust_area must be an object with x, y, width, height for updateVideoOutroImage');
+      }
+      const { x, y, width, height } = rawOutroFocusArea as Record<string, unknown>;
+      const isInvalid = [x, y, width, height].some((value) => typeof value !== 'number' || !Number.isFinite(value));
+      if (isInvalid) {
+        throw new Error('outro_focust_area x, y, width, height must be valid numbers for updateVideoOutroImage');
+      }
     }
 
     const body = {
       input: {
         ...input,
         videoSessionId: String(videoSessionId),
-        outro_image_url: String(outroImageUrl),
+        ...(outroImageUrl ? { outro_image_url: String(outroImageUrl) } : {}),
+        generate_outro_image: generateOutroImage,
+        ...(generateOutroImage ? { cta_url: String(ctaUrl).trim() } : {}),
+        ...(ctaTextTop ? { cta_text_top: String(ctaTextTop) } : {}),
+        ...(ctaTextBottom ? { cta_text_bottom: String(ctaTextBottom) } : {}),
+        ...(ctaLogo ? { cta_logo: String(ctaLogo) } : {}),
+        ...(rawAddOutroAnimation !== undefined ? { add_outro_animation: rawAddOutroAnimation === true } : {}),
+        ...(rawAddOutroFocusArea !== undefined ? { add_outro_focus_area: rawAddOutroFocusArea === true } : {}),
+        ...(rawOutroFocusArea !== undefined ? { outro_focust_area: rawOutroFocusArea } : {}),
       },
       webhookUrl: options?.webhookUrl,
     };
@@ -2412,6 +2739,72 @@ export class SamsarClient {
       ...response,
       data: normalizedData,
     };
+  }
+
+  /**
+   * Publish a completed Samsar video session to the public publication feed.
+   * This is a free endpoint. The session must belong to the authenticated API key/auth token.
+   */
+  async publishPublication(
+    input: string | SessionPublicationInput,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<SessionPublicationResponse>> {
+    const payload = normalizeSessionPublicationInput(input, 'publishPublication');
+    return this.post<SessionPublicationResponse>('publications/publish', payload, options);
+  }
+
+  /**
+   * Alias for publishPublication, named around the underlying VideoSession resource.
+   */
+  async publishSessionPublication(
+    input: string | SessionPublicationInput,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<SessionPublicationResponse>> {
+    return this.publishPublication(input, options);
+  }
+
+  /**
+   * Edit an existing publication for a Samsar video session.
+   * Omitted fields keep their current publication values.
+   */
+  async editPublication(
+    input: SessionPublicationInput,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<SessionPublicationResponse>> {
+    const payload = normalizeSessionPublicationInput(input, 'editPublication');
+    return this.post<SessionPublicationResponse>('publications/edit', payload, options);
+  }
+
+  /**
+   * Alias for editPublication, named around the underlying VideoSession resource.
+   */
+  async editSessionPublication(
+    input: SessionPublicationInput,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<SessionPublicationResponse>> {
+    return this.editPublication(input, options);
+  }
+
+  /**
+   * Revoke a publication for a Samsar video session.
+   * This deletes the publication record and clears published fields on the session.
+   */
+  async revokePublication(
+    input: string | SessionPublicationInput,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<SessionPublicationResponse>> {
+    const payload = normalizeSessionPublicationInput(input, 'revokePublication');
+    return this.post<SessionPublicationResponse>('publications/revoke', payload, options);
+  }
+
+  /**
+   * Alias for revokePublication, named around the underlying VideoSession resource.
+   */
+  async revokeSessionPublication(
+    input: string | SessionPublicationInput,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<SessionPublicationResponse>> {
+    return this.revokePublication(input, options);
   }
 
   /**
