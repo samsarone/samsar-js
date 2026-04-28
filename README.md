@@ -512,7 +512,7 @@ Video model support notes:
 Upcoming `/v2` omni route adapters:
 - `/v2` is additive; `/v1` is not deprecated.
 - `createV2VideoFromText`, `createV2VideoFromImageList`, `updateV2VideoOutroImage`, `addV2VideoOutroImage`, `getV2Status`, `getV2Credits`, `listV2Requests`, and `createV2Session` call the new omni route surface.
-- Programmatic user billing helpers include `createV2UserRechargeCredits`, `refreshV2UserToken`, `getV2UserCredits`, `getV2UserUsageLogs`, and `getV2UserPaymentStatus`.
+- Programmatic user billing helpers include `createV2UserRechargeCredits`, `refreshV2UserToken`, `createV2UserAppKey`, `refreshV2UserAppKey`, `getV2UserCredits`, `getV2UserUsageLogs`, and `getV2UserPaymentStatus`.
 - Omit `externalUser` for internal account billing, pass `externalUser` to scope an external user with the account API key, or authenticate the client directly with an external-user auth token/API key.
 
 ```ts
@@ -554,6 +554,21 @@ const refreshed = await userClient.refreshV2UserToken(refreshToken);
 localStorage.setItem('authToken', refreshed.data.authToken);
 localStorage.setItem('refreshToken', refreshed.data.refreshToken);
 localStorage.setItem('expiryDate', refreshed.data.expiryDate);
+```
+
+Long-running app credentials:
+
+```ts
+const secret = crypto.randomUUID() + crypto.randomUUID();
+const created = await userClient.createV2UserAppKey({ secret });
+
+const appClient = new SamsarClient({
+  appKey: created.data.appKey ?? created.data.app_key,
+  appSecret: secret,
+});
+
+const credits = await appClient.getV2UserCredits();
+const rotated = await appClient.refreshV2UserAppKey();
 ```
 
 Each method returns `{ data, status, headers, creditsCharged, creditsRemaining, raw }`. Non-2xx responses throw `SamsarRequestError` containing status, body, and credit headers (if present).

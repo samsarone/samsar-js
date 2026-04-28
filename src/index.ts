@@ -10,6 +10,8 @@ type QueryParams = Record<string, QueryValue>;
 
 export interface SamsarClientOptions {
   apiKey?: string;
+  appKey?: string;
+  appSecret?: string;
   baseUrl?: string;
   timeoutMs?: number;
   fetch?: FetchLike;
@@ -21,6 +23,8 @@ export interface SamsarRequestOptions {
   idempotencyKey?: string;
   headers?: Record<string, string>;
   externalUserApiKey?: string;
+  appKey?: string;
+  appSecret?: string;
   signal?: AbortSignal;
   query?: QueryParams;
 }
@@ -1510,6 +1514,54 @@ export interface V2UserTokenResponse {
   [key: string]: unknown;
 }
 
+export interface V2UserAppKeyRequest {
+  secret?: string;
+  appSecret?: string;
+  app_secret?: string;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface V2UserAppKeyRefreshRequest {
+  appKey?: string;
+  app_key?: string;
+  secret?: string;
+  appSecret?: string;
+  app_secret?: string;
+  [key: string]: unknown;
+}
+
+export interface V2UserAppKeyRecord {
+  id?: string;
+  userId?: string;
+  appKeyPrefix?: string | null;
+  appKeyLast4?: string | null;
+  status?: 'active' | 'revoked' | string;
+  expiresAt?: string | null;
+  lastUsedAt?: string | null;
+  refreshedAt?: string | null;
+  revokedAt?: string | null;
+  rotationCount?: number;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  authScheme?: string;
+  authHeader?: string;
+  secretHeader?: string;
+  [key: string]: unknown;
+}
+
+export interface V2UserAppKeyResponse {
+  app_key?: string;
+  appKey?: string;
+  token_type?: 'AppKey' | string;
+  tokenType?: 'AppKey' | string;
+  expires_at?: string;
+  expiresAt?: string;
+  app_key_record?: V2UserAppKeyRecord;
+  appKeyRecord?: V2UserAppKeyRecord;
+  [key: string]: unknown;
+}
+
 export interface UsageLogItem {
   id?: string;
   source?: string;
@@ -2060,6 +2112,8 @@ function normalizeSessionPublicationInput(
 
 export class SamsarClient {
   private readonly apiKey?: string;
+  private readonly appKey?: string;
+  private readonly appSecret?: string;
   private readonly baseUrl: string;
   private readonly timeoutMs: number;
   private readonly fetchFn: FetchLike;
@@ -2068,6 +2122,8 @@ export class SamsarClient {
 
   constructor(options: SamsarClientOptions) {
     this.apiKey = options?.apiKey?.trim() || undefined;
+    this.appKey = options?.appKey?.trim() || undefined;
+    this.appSecret = options?.appSecret?.trim() || undefined;
     this.baseUrl = trimTrailingSlash(options.baseUrl ?? DEFAULT_BASE_URL);
     this.timeoutMs = options.timeoutMs ?? 30000;
     this.fetchFn = options.fetch ?? (globalThis.fetch as FetchLike);
@@ -2204,6 +2260,67 @@ export class SamsarClient {
     options?: V2RequestOptions,
   ): Promise<SamsarResult<V2UserTokenResponse>> {
     return this.refreshV2UserToken(payload, options);
+  }
+
+  async createV2UserAppKey(
+    payload: string | V2UserAppKeyRequest,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<V2UserAppKeyResponse>> {
+    const input: V2UserAppKeyRequest = typeof payload === 'string' ? { secret: payload } : (payload ?? {});
+    const secret = input.secret ?? input.appSecret ?? input.app_secret;
+    if (!secret || typeof secret !== 'string') {
+      throw new Error('secret is required');
+    }
+    if (secret.trim().length < 32) {
+      throw new Error('secret must be at least 32 characters');
+    }
+
+    return this.postV2<V2UserAppKeyResponse>(
+      'users/app_key',
+      {
+        ...input,
+        secret: secret.trim(),
+      },
+      options,
+    );
+  }
+
+  async getV2UserAppKey(options?: V2RequestOptions): Promise<SamsarResult<V2UserAppKeyResponse>> {
+    return this.getV2<V2UserAppKeyResponse>('users/app_key', options);
+  }
+
+  async refreshV2UserAppKey(
+    payload?: V2UserAppKeyRefreshRequest,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<V2UserAppKeyResponse>> {
+    const input = payload ?? {};
+    const appKey = input.appKey ?? input.app_key ?? options?.appKey ?? this.appKey;
+    const secret = input.secret ?? input.appSecret ?? input.app_secret ?? options?.appSecret ?? this.appSecret;
+    if (!appKey || typeof appKey !== 'string') {
+      throw new Error('appKey is required');
+    }
+    if (!secret || typeof secret !== 'string') {
+      throw new Error('secret is required');
+    }
+    if (secret.trim().length < 32) {
+      throw new Error('secret must be at least 32 characters');
+    }
+
+    return this.postV2<V2UserAppKeyResponse>(
+      'users/app_key/refresh',
+      {
+        app_key: appKey.trim(),
+        secret: secret.trim(),
+      },
+      options,
+    );
+  }
+
+  async revokeV2UserAppKey(options?: V2RequestOptions): Promise<SamsarResult<V2UserAppKeyResponse>> {
+    return this.request<V2UserAppKeyResponse>(
+      this.buildV2Url('users/app_key'),
+      { ...(options ?? {}), method: 'DELETE' },
+    );
   }
 
   async getV2UserPaymentStatus(
@@ -4096,10 +4213,17 @@ export class SamsarClient {
   }
 
   private buildHeaders(options: SamsarRequestOptions & { method: string; body?: BodyInit | null }) {
+    const resolvedAppKey = options.appKey?.trim() || (!this.apiKey ? this.appKey : undefined);
+    const resolvedAppSecret = options.appSecret?.trim() || this.appSecret;
     const headers: Record<string, string | undefined> = {
-      Authorization: this.apiKey ? `Bearer ${this.apiKey}` : undefined,
+      Authorization: resolvedAppKey
+        ? `AppKey ${resolvedAppKey}`
+        : this.apiKey
+          ? `Bearer ${this.apiKey}`
+          : undefined,
       'Content-Type': options.body ? 'application/json' : undefined,
       'x-external-user-api-key': options.externalUserApiKey ?? this.externalUserApiKey,
+      'x-app-secret': resolvedAppKey ? resolvedAppSecret : undefined,
       ...this.defaultHeaders,
       ...(options.headers ?? {}),
     };
