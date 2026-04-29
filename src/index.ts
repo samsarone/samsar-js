@@ -109,8 +109,18 @@ export interface OutroFocusArea {
 }
 
 export interface FooterMetadataItem {
-  url: string;
+  url?: string;
+  cta_url?: string;
+  ctaUrl?: string;
   title?: string;
+  text?: string;
+  cta_text?: string;
+  ctaText?: string;
+  cta_logo?: string;
+  ctaLogo?: string;
+  logoUrl?: string;
+  logoImagePath?: string;
+  footerLogoImagePath?: string;
 }
 
 export type ImageListToVideoAspectRatio = '16:9' | '9:16';
@@ -292,6 +302,41 @@ export interface UpdateVideoOutroImageInput {
 }
 
 export interface UpdateVideoOutroImageResponse {
+  request_id?: string;
+  session_id?: string;
+  sessionID?: string;
+  creditsCharged?: number;
+  remainingCredits?: number | null;
+  [key: string]: unknown;
+}
+
+export interface UpdateVideoFooterImageInput {
+  videoSessionId?: string;
+  video_session_id?: string;
+  videoSessionID?: string;
+  session_id?: string;
+  sessionId?: string;
+  sessionID?: string;
+  request_id?: string;
+  requestId?: string;
+  source_request_id?: string;
+  sourceRequestId?: string;
+  external_request_id?: string;
+  externalRequestId?: string;
+  external_session_id?: string;
+  externalSessionId?: string;
+  remove_footer?: boolean;
+  removeFooter?: boolean;
+  cta_text?: string;
+  ctaText?: string;
+  cta_logo?: string;
+  ctaLogo?: string;
+  cta_url?: string;
+  ctaUrl?: string;
+  [key: string]: unknown;
+}
+
+export interface UpdateVideoFooterImageResponse {
   request_id?: string;
   session_id?: string;
   sessionID?: string;
@@ -2054,6 +2099,73 @@ function normalizeUpdateVideoOutroImageInput(
   };
 }
 
+function normalizeUpdateVideoFooterImageInput(
+  input: UpdateVideoFooterImageInput,
+  context = 'updateVideoFooterImage',
+): Record<string, unknown> {
+  const raw = input as Record<string, unknown>;
+  const videoSessionId =
+    (raw.videoSessionId as string | undefined) ??
+    (raw.video_session_id as string | undefined) ??
+    (raw.videoSessionID as string | undefined) ??
+    (raw.session_id as string | undefined) ??
+    (raw.sessionId as string | undefined) ??
+    (raw.sessionID as string | undefined) ??
+    (raw.request_id as string | undefined) ??
+    (raw.requestId as string | undefined) ??
+    (raw.source_request_id as string | undefined) ??
+    (raw.sourceRequestId as string | undefined) ??
+    (raw.external_request_id as string | undefined) ??
+    (raw.externalRequestId as string | undefined) ??
+    (raw.external_session_id as string | undefined) ??
+    (raw.externalSessionId as string | undefined);
+  const rawRemoveFooter =
+    (raw.remove_footer as unknown) ??
+    (raw.removeFooter as unknown);
+  const ctaText =
+    (raw.cta_text as string | undefined) ??
+    (raw.ctaText as string | undefined);
+  const ctaLogo =
+    (raw.cta_logo as string | undefined) ??
+    (raw.ctaLogo as string | undefined);
+  const ctaUrl =
+    (raw.cta_url as string | undefined) ??
+    (raw.ctaUrl as string | undefined);
+  const removeFooter = rawRemoveFooter === true;
+
+  if (!videoSessionId) {
+    throw new Error(`videoSessionId is required for ${context}`);
+  }
+  if (rawRemoveFooter !== undefined && typeof rawRemoveFooter !== 'boolean') {
+    throw new Error(`remove_footer must be a boolean for ${context}`);
+  }
+  if (ctaText !== undefined && typeof ctaText !== 'string') {
+    throw new Error(`cta_text must be a string for ${context}`);
+  }
+  if (ctaLogo !== undefined && typeof ctaLogo !== 'string') {
+    throw new Error(`cta_logo must be a string for ${context}`);
+  }
+  if (ctaUrl !== undefined && typeof ctaUrl !== 'string') {
+    throw new Error(`cta_url must be a string for ${context}`);
+  }
+
+  const normalizedCtaText = typeof ctaText === 'string' ? ctaText.trim() : '';
+  const normalizedCtaLogo = typeof ctaLogo === 'string' ? ctaLogo.trim() : '';
+  const normalizedCtaUrl = typeof ctaUrl === 'string' ? ctaUrl.trim() : '';
+  if (!removeFooter && !normalizedCtaText && !normalizedCtaLogo && !normalizedCtaUrl) {
+    throw new Error(`At least one of cta_text, cta_logo, or cta_url is required for ${context} unless remove_footer is true`);
+  }
+
+  return {
+    ...input,
+    videoSessionId: String(videoSessionId),
+    remove_footer: removeFooter,
+    ...(normalizedCtaText ? { cta_text: normalizedCtaText } : {}),
+    ...(normalizedCtaLogo ? { cta_logo: normalizedCtaLogo } : {}),
+    ...(normalizedCtaUrl ? { cta_url: normalizedCtaUrl } : {}),
+  };
+}
+
 function normalizeSessionPublicationInput(
   input: string | SessionPublicationInput,
   context: string,
@@ -2427,6 +2539,21 @@ export class SamsarClient {
     const normalizedInput = normalizeUpdateVideoOutroImageInput(input, 'updateV2VideoOutroImage');
     return this.postV2<UpdateVideoOutroImageResponse | ExternalRequestResponse>(
       'update_outro_image',
+      {
+        input: normalizedInput,
+        webhookUrl: options?.webhookUrl,
+      },
+      options,
+    );
+  }
+
+  async updateV2VideoFooterImage(
+    input: UpdateVideoFooterImageInput,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<UpdateVideoFooterImageResponse | ExternalRequestResponse>> {
+    const normalizedInput = normalizeUpdateVideoFooterImageInput(input, 'updateV2VideoFooterImage');
+    return this.postV2<UpdateVideoFooterImageResponse | ExternalRequestResponse>(
+      'update_footer_image',
       {
         input: normalizedInput,
         webhookUrl: options?.webhookUrl,
@@ -3117,6 +3244,74 @@ export class SamsarClient {
 
     return this.post<ExternalRequestResponse>(
       'external_users/update_outro_image',
+      body,
+      options,
+    );
+  }
+
+  /**
+   * Update or remove the footer for an existing video session by cloning it into a new session and
+   * re-running frame/video generation.
+   */
+  async updateVideoFooterImage(
+    input: UpdateVideoFooterImageInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<UpdateVideoFooterImageResponse>> {
+    const normalizedInput = normalizeUpdateVideoFooterImageInput(input, 'updateVideoFooterImage');
+    const body = {
+      input: normalizedInput,
+      webhookUrl: options?.webhookUrl,
+    };
+
+    const response = await this.post<UpdateVideoFooterImageResponse>(
+      'video/update_footer_image',
+      body,
+      options,
+    );
+
+    const data = response.data as Record<string, unknown> | null;
+    if (data && typeof data === 'object') {
+      const sessionId =
+        typeof (data as any).sessionID === 'string'
+          ? (data as any).sessionID
+          : typeof (data as any).session_id === 'string'
+            ? (data as any).session_id
+            : typeof (data as any).request_id === 'string'
+              ? (data as any).request_id
+              : undefined;
+      const normalizedSessionId = sessionId ? String(sessionId) : undefined;
+
+      const normalizedData: UpdateVideoFooterImageResponse = {
+        ...(data as UpdateVideoFooterImageResponse),
+        sessionID: (data as UpdateVideoFooterImageResponse).sessionID ?? normalizedSessionId ?? '',
+        session_id: (data as UpdateVideoFooterImageResponse).session_id ?? normalizedSessionId,
+        request_id: (data as UpdateVideoFooterImageResponse).request_id ?? normalizedSessionId,
+      };
+
+      return { ...response, data: normalizedData };
+    }
+
+    return response;
+  }
+
+  /**
+   * Update or remove the footer for an external-user video request through
+   * /external_users/update_footer_image.
+   */
+  async updateExternalVideoFooterImage(
+    externalUser: ExternalUserIdentity,
+    input: UpdateVideoFooterImageInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalRequestResponse>> {
+    const normalizedInput = normalizeUpdateVideoFooterImageInput(input, 'updateExternalVideoFooterImage');
+    const body = {
+      external_user: normalizeExternalUserIdentity(externalUser),
+      input: normalizedInput,
+      webhookUrl: options?.webhookUrl,
+    };
+
+    return this.post<ExternalRequestResponse>(
+      'external_users/update_footer_image',
       body,
       options,
     );

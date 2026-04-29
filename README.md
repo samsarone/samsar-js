@@ -131,6 +131,23 @@ await samsar.updateVideoOutroImage(
   { webhookUrl: 'https://example.com/webhook' },
 );
 
+// Update the footer CTA on an existing video session
+await samsar.updateVideoFooterImage(
+  {
+    videoSessionId: videoFromImages.data.session_id ?? videoFromImages.data.request_id!,
+    cta_text: 'Scan to book',
+    cta_logo: 'https://cdn.example.com/logo-white.png',
+    cta_url: 'https://example.com/book',
+  },
+  { webhookUrl: 'https://example.com/webhook' },
+);
+
+// Remove the footer from a cloned rerender
+await samsar.updateVideoFooterImage({
+  videoSessionId: videoFromImages.data.session_id ?? videoFromImages.data.request_id!,
+  remove_footer: true,
+});
+
 // Translate an existing video session into another language
 const translated = await samsar.translateVideo(
   {
@@ -445,6 +462,15 @@ const externalOutroUpdate = await platform.updateExternalVideoOutroImage(externa
 });
 console.log(externalOutroUpdate.data.request_id);
 
+// Update or remove an external user's existing footer CTA.
+const externalFooterUpdate = await platform.updateExternalVideoFooterImage(externalUser, {
+  request_id: externalRender.data.request_id,
+  cta_text: 'Scan to shop',
+  cta_logo: 'https://cdn.example.com/logo-white.png',
+  cta_url: 'https://example.com/shop',
+});
+console.log(externalFooterUpdate.data.request_id);
+
 // Repeated video routes accept the returned extreq_ id or the normalized external id.
 // The API resolves ownership through external request mappings and GlobalSession records.
 
@@ -516,14 +542,15 @@ Video model support notes:
 - `createVideoFromImageList` accepts either a provided outro (`outro_image_url`) or server-generated QR outro (`generate_outro_image: true` with `cta_url`). Do not combine the two modes in a single request.
 - `createVideoFromImageList` can render per-scene footer QR cards by setting `add_footer_animation: true` and providing one `footer_metadata` item per image scene.
 - `updateVideoOutroImage` accepts either a replacement outro image URL (`outro_image_url`, `outroImageUrl`, `new_outro_image_url`) or a generated QR CTA outro (`generate_outro_image: true` with `cta_url`, or just `cta_url` when no outro image URL is supplied). Generated outro updates reuse the existing session image layers for tiling and only queue frame/video regeneration.
-- Main video methods and external-user methods accept the same generated outro and footer parameters. The API can resolve either internal session ids or external `extreq_...` ids on repeated video routes, so client code can keep using `translateVideo`, `joinVideos`, `addSubtitles`, `removeSubtitles`, `addVideoOutroImage`, and `updateVideoOutroImage`; the explicit external variants are available when you want to call `/external_users/*` directly. Do not strip the `extreq_` prefix.
+- `updateVideoFooterImage` updates the footer CTA on a cloned session with `cta_text`, `cta_logo`, and/or `cta_url`, or removes all scene footers with `remove_footer: true`. Footer updates queue only frame/video regeneration.
+- Main video methods and external-user methods accept the same generated outro and footer parameters. The API can resolve either internal session ids or external `extreq_...` ids on repeated video routes, so client code can keep using `translateVideo`, `joinVideos`, `addSubtitles`, `removeSubtitles`, `addVideoOutroImage`, `updateVideoOutroImage`, and `updateVideoFooterImage`; the explicit external variants are available when you want to call `/external_users/*` directly. Do not strip the `extreq_` prefix.
 - Completed video status, latest-version, and completed-session list responses expose `has_subtitles` and `result_language` when the session metadata is available.
 - `publishPublication`, `editPublication`, and `revokePublication` manage public feed publications for completed sessions through free `/publications/*` endpoints. They work with account API keys, customer sub-account API keys, and client auth tokens when the session belongs to the authenticated actor.
 - Image-list video pricing is per rendered second: `VEO3.1I2V` and `SEEDANCEI2V` are 75 credits/sec, `KLING3.0` is 50 credits/sec, and `RUNWAYML` is 25 credits/sec.
 
 Upcoming `/v2` omni route adapters:
 - `/v2` is additive; `/v1` is not deprecated.
-- `createV2VideoFromText`, `createV2VideoFromImageList`, `updateV2VideoOutroImage`, `addV2VideoOutroImage`, `getV2Status`, `getV2Credits`, `listV2Requests`, and `createV2Session` call the new omni route surface.
+- `createV2VideoFromText`, `createV2VideoFromImageList`, `updateV2VideoOutroImage`, `updateV2VideoFooterImage`, `addV2VideoOutroImage`, `getV2Status`, `getV2Credits`, `listV2Requests`, and `createV2Session` call the new omni route surface.
 - Programmatic user billing helpers include `createV2UserRechargeCredits`, `refreshV2UserToken`, `createV2UserAppKey`, `refreshV2UserAppKey`, `getV2UserCredits`, `getV2UserUsageLogs`, and `getV2UserPaymentStatus`.
 - Omit `externalUser` for internal account billing, pass `externalUser` to scope an external user with the account API key, or authenticate the client directly with an external-user auth token/API key.
 
