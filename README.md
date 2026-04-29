@@ -161,9 +161,17 @@ const noSubtitles = await samsar.removeSubtitles(
   { webhookUrl: 'https://example.com/webhook' },
 );
 
+// Clone a session and add subtitle/transcript text overlays
+const withSubtitles = await samsar.addSubtitles(
+  {
+    videoSessionId: noSubtitles.data.session_id ?? noSubtitles.data.request_id!,
+  },
+  { webhookUrl: 'https://example.com/webhook' },
+);
+
 // Cancel an in-progress render
 const cancelled = await samsar.cancelRender({
-  videoSessionId: noSubtitles.data.session_id ?? noSubtitles.data.request_id!,
+  videoSessionId: withSubtitles.data.session_id ?? withSubtitles.data.request_id!,
 });
 console.log(cancelled.data.status, cancelled.data.cancelled);
 
@@ -331,15 +339,18 @@ const rollup = await samsar.enhanceAndGenerateRollupBanner({
 
 // Check status by request_id (defaults to /v1/status)
 const status = await samsar.getStatus(video.data.request_id);
+if (status.data.status === 'COMPLETED') {
+  console.log(status.data.result_url, status.data.has_subtitles, status.data.result_language);
+}
 
 // Fetch the latest render URL for a session (when available)
 const latest = await samsar.fetchLatestVideoVersion(video.data.session_id ?? video.data.request_id);
-console.log(latest.data.result_url ?? latest.data.status);
+console.log(latest.data.result_url ?? latest.data.status, latest.data.has_subtitles, latest.data.result_language);
 
 // List completed video sessions for this API key
 const completedSessions = await samsar.listCompletedVideoSessions();
 completedSessions.data.forEach((session) => {
-  console.log(session.session_id, session.langauge, session.result_url);
+  console.log(session.session_id, session.result_language ?? session.langauge, session.has_subtitles, session.result_url);
 });
 
 // Publish, edit, or revoke a completed session in the public publication feed (free endpoints)
@@ -505,7 +516,8 @@ Video model support notes:
 - `createVideoFromImageList` accepts either a provided outro (`outro_image_url`) or server-generated QR outro (`generate_outro_image: true` with `cta_url`). Do not combine the two modes in a single request.
 - `createVideoFromImageList` can render per-scene footer QR cards by setting `add_footer_animation: true` and providing one `footer_metadata` item per image scene.
 - `updateVideoOutroImage` accepts either a replacement outro image URL (`outro_image_url`, `outroImageUrl`, `new_outro_image_url`) or a generated QR CTA outro (`generate_outro_image: true` with `cta_url`, or just `cta_url` when no outro image URL is supplied). Generated outro updates reuse the existing session image layers for tiling and only queue frame/video regeneration.
-- Main video methods and external-user methods accept the same generated outro and footer parameters. The API can resolve either internal session ids or external `extreq_...` ids on repeated video routes, so client code can keep using `translateVideo`, `joinVideos`, `addVideoOutroImage`, and `updateVideoOutroImage`; the explicit external variants are available when you want to call `/external_users/*` directly. Do not strip the `extreq_` prefix.
+- Main video methods and external-user methods accept the same generated outro and footer parameters. The API can resolve either internal session ids or external `extreq_...` ids on repeated video routes, so client code can keep using `translateVideo`, `joinVideos`, `addSubtitles`, `removeSubtitles`, `addVideoOutroImage`, and `updateVideoOutroImage`; the explicit external variants are available when you want to call `/external_users/*` directly. Do not strip the `extreq_` prefix.
+- Completed video status, latest-version, and completed-session list responses expose `has_subtitles` and `result_language` when the session metadata is available.
 - `publishPublication`, `editPublication`, and `revokePublication` manage public feed publications for completed sessions through free `/publications/*` endpoints. They work with account API keys, customer sub-account API keys, and client auth tokens when the session belongs to the authenticated actor.
 - Image-list video pricing is per rendered second: `VEO3.1I2V` and `SEEDANCEI2V` are 75 credits/sec, `KLING3.0` is 50 credits/sec, and `RUNWAYML` is 25 credits/sec.
 

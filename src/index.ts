@@ -62,6 +62,8 @@ export interface CreateVideoFromTextInput {
   languageString?: string | null;
   enable_subtitles?: boolean;
   enableSubtitles?: boolean;
+  add_subtitles?: boolean;
+  addSubtitles?: boolean;
   session_id?: string;
   sessionId?: string;
   sessionID?: string;
@@ -164,6 +166,8 @@ export interface CreateVideoFromImageListInput {
   font?: FontOptions;
   enable_subtitles?: boolean;
   enableSubtitles?: boolean;
+  add_subtitles?: boolean;
+  addSubtitles?: boolean;
   session_id?: string;
   sessionId?: string;
   sessionID?: string;
@@ -375,6 +379,10 @@ export interface RemoveSubtitlesResponse {
   [key: string]: unknown;
 }
 
+export interface AddSubtitlesInput extends RemoveSubtitlesInput {}
+
+export interface AddSubtitlesResponse extends RemoveSubtitlesResponse {}
+
 export interface CancelRenderInput {
   videoSessionId?: string;
   video_session_id?: string;
@@ -400,6 +408,8 @@ export interface CancelRenderResponse {
 export interface FetchLatestVideoVersionResponse {
   session_id: string;
   result_url?: string;
+  has_subtitles?: boolean | null;
+  result_language?: string | null;
   status?: string;
   message?: string;
   [key: string]: unknown;
@@ -409,6 +419,8 @@ export interface CompletedVideoSession {
   session_id: string;
   langauge: string;
   language?: string;
+  result_language?: string;
+  has_subtitles?: boolean | null;
   result_url: string;
   [key: string]: unknown;
 }
@@ -1225,6 +1237,8 @@ export interface GlobalStatusResponse {
   type?: 'image' | 'video' | string;
   provider?: string | null;
   result_url?: string | null;
+  has_subtitles?: boolean | null;
+  result_language?: string | null;
   thumbnail_url?: string | null;
   result_urls?: string[];
   videoLink?: string | null;
@@ -2927,6 +2941,64 @@ export class SamsarClient {
   }
 
   /**
+   * Add subtitle/transcript text overlays by cloning an existing session and re-running
+   * transcription + frame + video generation on the new session.
+   */
+  async addSubtitles(
+    input: AddSubtitlesInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<AddSubtitlesResponse>> {
+    const raw = input as Record<string, unknown>;
+    const videoSessionId =
+      (raw.videoSessionId as string | undefined) ??
+      (raw.video_session_id as string | undefined) ??
+      (raw.videoSessionID as string | undefined) ??
+      (raw.session_id as string | undefined) ??
+      (raw.sessionId as string | undefined) ??
+      (raw.sessionID as string | undefined) ??
+      (raw.request_id as string | undefined) ??
+      (raw.requestId as string | undefined);
+
+    if (!videoSessionId) {
+      throw new Error('videoSessionId is required for addSubtitles');
+    }
+
+    const body = {
+      input: {
+        ...input,
+        videoSessionId: String(videoSessionId),
+      },
+      webhookUrl: options?.webhookUrl,
+    };
+
+    const response = await this.post<AddSubtitlesResponse>('video/add_subtitles', body, options);
+
+    const data = response.data as Record<string, unknown> | null;
+    if (data && typeof data === 'object') {
+      const sessionId =
+        typeof (data as any).sessionID === 'string'
+          ? (data as any).sessionID
+          : typeof (data as any).session_id === 'string'
+            ? (data as any).session_id
+            : typeof (data as any).request_id === 'string'
+              ? (data as any).request_id
+              : undefined;
+      const normalizedSessionId = sessionId ? String(sessionId) : undefined;
+
+      const normalizedData: AddSubtitlesResponse = {
+        ...(data as AddSubtitlesResponse),
+        sessionID: (data as AddSubtitlesResponse).sessionID ?? normalizedSessionId ?? '',
+        session_id: (data as AddSubtitlesResponse).session_id ?? normalizedSessionId,
+        request_id: (data as AddSubtitlesResponse).request_id ?? normalizedSessionId,
+      };
+
+      return { ...response, data: normalizedData };
+    }
+
+    return response;
+  }
+
+  /**
    * Cancel an in-progress render for an existing video session.
    */
   async cancelRender(
@@ -3243,6 +3315,7 @@ export class SamsarClient {
 
   /**
    * Fetch the latest available render URL for a given video session id.
+   * Completed responses include result_url, has_subtitles, and result_language.
    * Maps to GET /video/fetch_latest_version?session_id={sessionId}.
    */
   async fetchLatestVideoVersion(
@@ -3266,6 +3339,7 @@ export class SamsarClient {
 
   /**
    * List completed video sessions for the authenticated API key.
+   * Each item includes result_url plus session metadata such as has_subtitles and result_language.
    * Maps to GET /video/list_completed_video_sessions.
    */
   async listCompletedVideoSessions(
@@ -4022,6 +4096,7 @@ export class SamsarClient {
    * Retrieve the status of an asynchronous request by request_id.
    * Defaults to GET /status?request_id={requestId}, but the path can be overridden.
    * Normalizes the response to expose status/result_url for both image and video flows.
+   * Completed video responses can also include has_subtitles and result_language.
    */
   async getStatus(
     requestId: string,
