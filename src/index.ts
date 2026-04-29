@@ -245,10 +245,14 @@ export interface TranslateVideoInput {
   langauge?: string;
   langauge_code?: string;
   langaugeCode?: string;
-  outro_image_url?: string;
-  outroImageUrl?: string;
-  new_outro_image_url?: string;
-  newOutroImageUrl?: string;
+  enable_subtitles?: boolean;
+  enableSubtitles?: boolean;
+  add_subtitles?: boolean;
+  addSubtitles?: boolean;
+  translate_outro?: boolean;
+  translateOutro?: boolean;
+  translate_footer?: boolean;
+  translateFooter?: boolean;
   [key: string]: unknown;
 }
 
@@ -1993,6 +1997,71 @@ function normalizeCreateVideoFromImageListInput(
   return normalized as CreateVideoFromImageListInput;
 }
 
+function normalizeTranslateVideoInput(
+  input: TranslateVideoInput,
+  context = 'translateVideo',
+): Record<string, unknown> {
+  const raw = input as Record<string, unknown>;
+  const videoSessionId =
+    (raw.videoSessionId as string | undefined) ??
+    (raw.video_session_id as string | undefined) ??
+    (raw.videoSessionID as string | undefined) ??
+    (raw.session_id as string | undefined) ??
+    (raw.sessionId as string | undefined) ??
+    (raw.sessionID as string | undefined) ??
+    (raw.request_id as string | undefined) ??
+    (raw.requestId as string | undefined);
+  const language =
+    (raw.language as string | undefined) ??
+    (raw.language_code as string | undefined) ??
+    (raw.languageCode as string | undefined) ??
+    (raw.langauge as string | undefined) ??
+    (raw.langauge_code as string | undefined) ??
+    (raw.langaugeCode as string | undefined) ??
+    (raw.languageString as string | undefined);
+  const enableSubtitles = resolveAliasedInputValue(
+    raw,
+    ['enable_subtitles', 'enableSubtitles', 'add_subtitles', 'addSubtitles'],
+    'enable_subtitles',
+  ) ?? false;
+  const translateOutro = resolveAliasedInputValue(
+    raw,
+    ['translate_outro', 'translateOutro'],
+    'translate_outro',
+  ) ?? true;
+  const translateFooter = resolveAliasedInputValue(
+    raw,
+    ['translate_footer', 'translateFooter'],
+    'translate_footer',
+  ) ?? true;
+
+  if (!videoSessionId) {
+    throw new Error(`videoSessionId is required for ${context}`);
+  }
+  if (!language) {
+    throw new Error(`language is required for ${context}`);
+  }
+  assertOptionalBoolean(enableSubtitles, 'enable_subtitles', context);
+  assertOptionalBoolean(translateOutro, 'translate_outro', context);
+  assertOptionalBoolean(translateFooter, 'translate_footer', context);
+
+  const normalizedInput: Record<string, unknown> = { ...input };
+  delete normalizedInput.outro_image_url;
+  delete normalizedInput.outroImageUrl;
+  delete normalizedInput.outroImageURL;
+  delete normalizedInput.new_outro_image_url;
+  delete normalizedInput.newOutroImageUrl;
+
+  return {
+    ...normalizedInput,
+    videoSessionId: String(videoSessionId),
+    language: String(language),
+    enable_subtitles: enableSubtitles,
+    translate_outro: translateOutro,
+    translate_footer: translateFooter,
+  };
+}
+
 function normalizeUpdateVideoOutroImageInput(
   input: UpdateVideoOutroImageInput,
   context = 'updateVideoOutroImage',
@@ -2513,6 +2582,21 @@ export class SamsarClient {
     );
   }
 
+  async translateV2Video(
+    input: TranslateVideoInput,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<TranslateVideoResponse | ExternalRequestResponse>> {
+    const normalizedInput = normalizeTranslateVideoInput(input, 'translateV2Video');
+    return this.postV2<TranslateVideoResponse | ExternalRequestResponse>(
+      'translate_video',
+      {
+        input: normalizedInput,
+        webhookUrl: options?.webhookUrl,
+      },
+      options,
+    );
+  }
+
   async uploadV2ImageData(
     imageData: string[],
     options?: V2RequestOptions,
@@ -2875,37 +2959,11 @@ export class SamsarClient {
     input: TranslateVideoInput,
     options?: { webhookUrl?: string } & SamsarRequestOptions,
   ): Promise<SamsarResult<TranslateVideoResponse>> {
-    const raw = input as Record<string, unknown>;
-    const videoSessionId =
-      (raw.videoSessionId as string | undefined) ??
-      (raw.video_session_id as string | undefined) ??
-      (raw.videoSessionID as string | undefined) ??
-      (raw.session_id as string | undefined) ??
-      (raw.sessionId as string | undefined) ??
-      (raw.sessionID as string | undefined) ??
-      (raw.request_id as string | undefined) ??
-      (raw.requestId as string | undefined);
-    const language =
-      (raw.language as string | undefined) ??
-      (raw.language_code as string | undefined) ??
-      (raw.languageCode as string | undefined) ??
-      (raw.langauge as string | undefined) ??
-      (raw.langauge_code as string | undefined) ??
-      (raw.langaugeCode as string | undefined) ??
-      (raw.languageString as string | undefined);
-
-    if (!videoSessionId) {
-      throw new Error('videoSessionId is required for translateVideo');
-    }
-    if (!language) {
-      throw new Error('language is required for translateVideo');
-    }
+    const normalizedInput = normalizeTranslateVideoInput(input, 'translateVideo');
 
     const body = {
       input: {
-        ...input,
-        videoSessionId: String(videoSessionId),
-        language: String(language),
+        ...normalizedInput,
       },
       webhookUrl: options?.webhookUrl,
     };
@@ -4459,8 +4517,11 @@ export class SamsarClient {
           body: parsedBody,
         });
       }
+      const responseMessage = getResponseErrorMessage(parsedBody);
       throw new SamsarRequestError(
-        `Request to ${url} failed with status ${response.status}`,
+        responseMessage
+          ? `Request to ${url} failed with status ${response.status}: ${responseMessage}`
+          : `Request to ${url} failed with status ${response.status}`,
         {
           status: response.status,
           body: parsedBody,
@@ -4557,6 +4618,29 @@ function parseMaybeJson(value: string): unknown {
   } catch {
     return value;
   }
+}
+
+function getResponseErrorMessage(body: unknown): string | null {
+  if (!body || typeof body !== 'object' || Array.isArray(body)) {
+    return typeof body === 'string' && body.trim() ? body.trim() : null;
+  }
+
+  const record = body as Record<string, unknown>;
+  for (const key of ['message', 'error', 'detail']) {
+    const value = record[key];
+    if (typeof value === 'string' && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  if (record.error && typeof record.error === 'object' && !Array.isArray(record.error)) {
+    const nestedMessage = (record.error as Record<string, unknown>).message;
+    if (typeof nestedMessage === 'string' && nestedMessage.trim()) {
+      return nestedMessage.trim();
+    }
+  }
+
+  return null;
 }
 
 function headersToObject(headers: Headers): Record<string, string> {

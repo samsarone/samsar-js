@@ -153,8 +153,9 @@ const translated = await samsar.translateVideo(
   {
     videoSessionId: videoFromImages.data.session_id ?? videoFromImages.data.request_id!,
     language: 'es',
-    // Optional: override the outro image in the translated session
-    outro_image_url: 'https://cdn.example.com/outro.png',
+    enable_subtitles: false,
+    translate_outro: true,
+    translate_footer: true,
   },
   { webhookUrl: 'https://example.com/webhook' },
 );
@@ -550,7 +551,7 @@ Video model support notes:
 
 Upcoming `/v2` omni route adapters:
 - `/v2` is additive; `/v1` is not deprecated.
-- `createV2VideoFromText`, `createV2VideoFromImageList`, `updateV2VideoOutroImage`, `updateV2VideoFooterImage`, `addV2VideoOutroImage`, `getV2Status`, `getV2Credits`, `listV2Requests`, and `createV2Session` call the new omni route surface.
+- `createV2VideoFromText`, `createV2VideoFromImageList`, `translateV2Video`, `updateV2VideoOutroImage`, `updateV2VideoFooterImage`, `addV2VideoOutroImage`, `getV2Status`, `getV2Credits`, `listV2Requests`, and `createV2Session` call the new omni route surface.
 - Programmatic user billing helpers include `createV2UserRechargeCredits`, `refreshV2UserToken`, `createV2UserAppKey`, `refreshV2UserAppKey`, `getV2UserCredits`, `getV2UserUsageLogs`, and `getV2UserPaymentStatus`.
 - Omit `externalUser` for internal account billing, pass `externalUser` to scope an external user with the account API key, or authenticate the client directly with an external-user auth token/API key.
 
@@ -570,6 +571,14 @@ const v2ExternalVideo = await platform.createV2VideoFromImageList(
   },
   { externalUser },
 );
+
+const v2Translated = await platform.translateV2Video({
+  videoSessionId: v2Video.data.request_id!,
+  language: 'es',
+  enable_subtitles: false,
+  translate_outro: true,
+  translate_footer: true,
+});
 
 const v2Status = await platform.getV2Status(v2Video.data.request_id!);
 console.log(v2Status.data.status);
