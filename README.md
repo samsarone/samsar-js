@@ -160,6 +160,14 @@ const translated = await samsar.translateVideo(
   { webhookUrl: 'https://example.com/webhook' },
 );
 
+// Deep-clone an existing completed session and render a new final video URL
+const cloned = await samsar.cloneVideo(
+  {
+    videoSessionId: videoFromImages.data.session_id ?? videoFromImages.data.request_id!,
+  },
+  { webhookUrl: 'https://example.com/webhook' },
+);
+
 // Join multiple completed sessions into a single appended video
 const joined = await samsar.joinVideos(
   {
@@ -544,6 +552,7 @@ Video model support notes:
 - `createVideoFromImageList` can render per-scene footer QR cards by setting `add_footer_animation: true` and providing one `footer_metadata` item per image scene.
 - `updateVideoOutroImage` accepts either a replacement outro image URL (`outro_image_url`, `outroImageUrl`, `new_outro_image_url`) or a generated QR CTA outro (`generate_outro_image: true` with `cta_url`, or just `cta_url` when no outro image URL is supplied). Generated outro updates reuse the existing session image layers for tiling and only queue frame/video regeneration.
 - `updateVideoFooterImage` updates the footer CTA on a cloned session with `cta_text`, `cta_logo`, and/or `cta_url`, or removes all scene footers with `remove_footer: true`. Footer updates queue only frame/video regeneration.
+- `cloneVideo` creates a deep copy of a completed session and queues only the final video render so the clone receives a new rendered video path and URL. It does not charge credits.
 - Main video methods and external-user methods accept the same generated outro and footer parameters. The API can resolve either internal session ids or external `extreq_...` ids on repeated video routes, so client code can keep using `translateVideo`, `joinVideos`, `addSubtitles`, `removeSubtitles`, `addVideoOutroImage`, `updateVideoOutroImage`, and `updateVideoFooterImage`; the explicit external variants are available when you want to call `/external_users/*` directly. Do not strip the `extreq_` prefix.
 - Completed video status, latest-version, and completed-session list responses expose `has_subtitles` and `result_language` when the session metadata is available.
 - `publishPublication`, `editPublication`, and `revokePublication` manage public feed publications for completed sessions through free `/publications/*` endpoints. They work with account API keys, customer sub-account API keys, and client auth tokens when the session belongs to the authenticated actor.
@@ -551,7 +560,7 @@ Video model support notes:
 
 Upcoming `/v2` omni route adapters:
 - `/v2` is additive; `/v1` is not deprecated.
-- `createV2VideoFromText`, `createV2VideoFromImageList`, `translateV2Video`, `updateV2VideoOutroImage`, `updateV2VideoFooterImage`, `addV2VideoOutroImage`, `getV2Status`, `getV2Credits`, `listV2Requests`, and `createV2Session` call the new omni route surface.
+- `createV2VideoFromText`, `createV2VideoFromImageList`, `translateV2Video`, `cloneV2Video`, `updateV2VideoOutroImage`, `updateV2VideoFooterImage`, `addV2VideoOutroImage`, `getV2Status`, `getV2Credits`, `listV2Requests`, and `createV2Session` call the new omni route surface.
 - Programmatic user billing helpers include `createV2UserRechargeCredits`, `refreshV2UserToken`, `createV2UserAppKey`, `refreshV2UserAppKey`, `getV2UserCredits`, `getV2UserUsageLogs`, and `getV2UserPaymentStatus`.
 - Omit `externalUser` for internal account billing, pass `externalUser` to scope an external user with the account API key, or authenticate the client directly with an external-user auth token/API key.
 
@@ -578,6 +587,10 @@ const v2Translated = await platform.translateV2Video({
   enable_subtitles: false,
   translate_outro: true,
   translate_footer: true,
+});
+
+const v2Clone = await platform.cloneV2Video({
+  videoSessionId: v2Video.data.request_id!,
 });
 
 const v2Status = await platform.getV2Status(v2Video.data.request_id!);

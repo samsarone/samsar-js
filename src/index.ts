@@ -265,6 +265,28 @@ export interface TranslateVideoResponse {
   [key: string]: unknown;
 }
 
+export interface CloneVideoInput {
+  videoSessionId?: string;
+  video_session_id?: string;
+  videoSessionID?: string;
+  session_id?: string;
+  sessionId?: string;
+  sessionID?: string;
+  request_id?: string;
+  requestId?: string;
+  source_session_id?: string;
+  sourceSessionId?: string;
+  source_request_id?: string;
+  sourceRequestId?: string;
+  [key: string]: unknown;
+}
+
+export interface CloneVideoResponse extends GlobalStatusResponse {
+  sessionID?: string;
+  creditsCharged?: number;
+  remainingCredits?: number | null;
+}
+
 export interface UpdateVideoOutroImageInput {
   videoSessionId?: string;
   video_session_id?: string;
@@ -2062,6 +2084,35 @@ function normalizeTranslateVideoInput(
   };
 }
 
+function normalizeCloneVideoInput(
+  input: CloneVideoInput,
+  context = 'cloneVideo',
+): Record<string, unknown> {
+  const raw = input as Record<string, unknown>;
+  const videoSessionId =
+    (raw.videoSessionId as string | undefined) ??
+    (raw.video_session_id as string | undefined) ??
+    (raw.videoSessionID as string | undefined) ??
+    (raw.session_id as string | undefined) ??
+    (raw.sessionId as string | undefined) ??
+    (raw.sessionID as string | undefined) ??
+    (raw.request_id as string | undefined) ??
+    (raw.requestId as string | undefined) ??
+    (raw.source_session_id as string | undefined) ??
+    (raw.sourceSessionId as string | undefined) ??
+    (raw.source_request_id as string | undefined) ??
+    (raw.sourceRequestId as string | undefined);
+
+  if (!videoSessionId) {
+    throw new Error(`videoSessionId is required for ${context}`);
+  }
+
+  return {
+    ...input,
+    videoSessionId: String(videoSessionId),
+  };
+}
+
 function normalizeUpdateVideoOutroImageInput(
   input: UpdateVideoOutroImageInput,
   context = 'updateVideoOutroImage',
@@ -2597,6 +2648,21 @@ export class SamsarClient {
     );
   }
 
+  async cloneV2Video(
+    input: CloneVideoInput,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<CloneVideoResponse>> {
+    const normalizedInput = normalizeCloneVideoInput(input, 'cloneV2Video');
+    return this.postV2<CloneVideoResponse>(
+      'video/clone',
+      {
+        input: normalizedInput,
+        webhookUrl: options?.webhookUrl,
+      },
+      options,
+    );
+  }
+
   async uploadV2ImageData(
     imageData: string[],
     options?: V2RequestOptions,
@@ -2987,6 +3053,50 @@ export class SamsarClient {
         sessionID: (data as TranslateVideoResponse).sessionID ?? normalizedSessionId ?? '',
         session_id: (data as TranslateVideoResponse).session_id ?? normalizedSessionId,
         request_id: (data as TranslateVideoResponse).request_id ?? normalizedSessionId,
+      };
+
+      return { ...response, data: normalizedData };
+    }
+
+    return response;
+  }
+
+  /**
+   * Deep-clone a completed video session and queue one final render for the new session.
+   * The clone copies session assets, then regenerates only the final rendered video URL.
+   */
+  async cloneVideo(
+    input: CloneVideoInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<CloneVideoResponse>> {
+    const normalizedInput = normalizeCloneVideoInput(input, 'cloneVideo');
+
+    const body = {
+      input: {
+        ...normalizedInput,
+      },
+      webhookUrl: options?.webhookUrl,
+    };
+
+    const response = await this.post<CloneVideoResponse>('video/clone', body, options);
+
+    const data = response.data as Record<string, unknown> | null;
+    if (data && typeof data === 'object') {
+      const sessionId =
+        typeof (data as any).sessionID === 'string'
+          ? (data as any).sessionID
+          : typeof (data as any).session_id === 'string'
+            ? (data as any).session_id
+            : typeof (data as any).request_id === 'string'
+              ? (data as any).request_id
+              : undefined;
+      const normalizedSessionId = sessionId ? String(sessionId) : undefined;
+
+      const normalizedData: CloneVideoResponse = {
+        ...(data as CloneVideoResponse),
+        sessionID: (data as CloneVideoResponse).sessionID ?? normalizedSessionId ?? '',
+        session_id: (data as CloneVideoResponse).session_id ?? normalizedSessionId ?? null,
+        request_id: (data as CloneVideoResponse).request_id ?? normalizedSessionId ?? null,
       };
 
       return { ...response, data: normalizedData };
