@@ -1,4 +1,14 @@
 const DEFAULT_BASE_URL = 'https://api.samsar.one/v1';
+export {
+  EXPRESS_VIDEO_CREDITS_PER_SECOND_BY_MODEL,
+  EXPRESS_VIDEO_FIXED_COMPONENTS_TOTAL_PER_SECOND,
+  EXPRESS_VIDEO_FIXED_PRICING_COMPONENTS_PER_SECOND,
+  EXPRESS_VIDEO_PRICING_DISTRIBUTION_PER_SECOND_BY_MODEL,
+  getExpressVideoCreditsPerSecond,
+  getExpressVideoPricingDistributionPerSecond,
+} from './express-video-pricing.js';
+export type { ExpressVideoPricingDistribution } from './express-video-pricing.js';
+
 const DEBUG = (() => {
   const env = (globalThis as any)?.process?.env;
   return env?.SAMSAR_SDK_DEBUG === '1';
@@ -127,10 +137,11 @@ export type ImageListToVideoAspectRatio = '16:9' | '9:16';
 
 export type ImageListToVideoModel =
   | 'VEO3.1I2V'
+  | 'VEO3.1I2VFAST'
   | 'SEEDANCEI2V'
-  | 'KLING3.0'
   | 'KLINGIMGTOVID3PRO'
-  | 'RUNWAYML';
+  | 'RUNWAYML'
+  | 'CUSTOM_IMAGE_TO_VIDEO';
 
 export interface ImageListToVideoItem {
   image_url?: string;
@@ -205,6 +216,10 @@ export interface CreateVideoFromImageListInput {
   addFooterAnimation?: boolean;
   footer_metadata?: FooterMetadataItem[];
   footerMetadata?: FooterMetadataItem[];
+  limit_single_narrator?: boolean;
+  limitSingleNarrator?: boolean;
+  add_narrator_avatar?: boolean;
+  addNarratorAvatar?: boolean;
   [key: string]: unknown;
 }
 
@@ -227,6 +242,13 @@ export interface CreateVideoFromImageListResponse {
   creditsCharged?: number;
   remainingCredits?: number | null;
   [key: string]: unknown;
+}
+
+export interface CreateV2StepImageToVideoInput extends Omit<CreateVideoFromImageListInput, 'image_urls'> {
+  image_urls?: Array<string | ImageListToVideoItem>;
+  image_url?: string;
+  imageUrl?: string;
+  image?: string;
 }
 
 export interface TranslateVideoInput {
@@ -602,6 +624,7 @@ export interface SupportedTextToVideoModelOption {
   label: string;
   value: string;
   basePrice: number | null;
+  pricingDistribution?: Record<string, number> | null;
   [key: string]: unknown;
 }
 
@@ -1324,6 +1347,8 @@ export interface GlobalStatusResponse {
 
 export interface ExternalUserIdentity {
   provider: string;
+  unique_key?: string;
+  uniqueKey?: string;
   external_user_id?: string;
   externalUserId?: string;
   external_app_id?: string;
@@ -1350,6 +1375,7 @@ export interface ExternalUserSummary {
   id?: string | null;
   provider?: string;
   external_user_id?: string;
+  unique_key?: string | null;
   external_app_id?: string | null;
   external_company_id?: string | null;
   email?: string | null;
@@ -1534,8 +1560,62 @@ export interface ExternalRequestsListResponse {
 }
 
 export interface V2RequestOptions extends SamsarRequestOptions {
-  externalUser?: ExternalUserIdentity | null;
+  externalUser?: V2ExternalUserIdentity | null;
   webhookUrl?: string;
+}
+
+export type V2StepVideoStage =
+  | 'prompt_generation'
+  | 'image_generation'
+  | 'speech_generation'
+  | 'music_generation'
+  | 'ai_video_generation'
+  | 'lip_sync_generation'
+  | 'sound_effect_generation'
+  | 'video_generation';
+
+export type V2StepVideoStatus = 'INIT' | 'PENDING' | 'COMPLETED' | 'FAILED' | string;
+
+export interface V2StepVideoState {
+  enabled?: boolean;
+  route_type?: 'text_to_video' | 'image_to_video' | string | null;
+  status?: V2StepVideoStatus;
+  current_step?: V2StepVideoStage | string | null;
+  current_step_label?: string | null;
+  next_step?: V2StepVideoStage | string | null;
+  waiting_for_process_next?: boolean;
+  updated_at?: string | null;
+  [key: string]: unknown;
+}
+
+export interface V2StepVideoResourceBlock {
+  step?: V2StepVideoStage | string;
+  label?: string;
+  status?: V2StepVideoStatus;
+  completed_at?: string | null;
+  resources?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface V2StepVideoStatusResponse extends GlobalStatusResponse {
+  step_status?: V2StepVideoStatus;
+  current_step?: V2StepVideoStage | string | null;
+  current_step_label?: string | null;
+  next_step?: V2StepVideoStage | string | null;
+  waiting_for_process_next?: boolean;
+  process_next_url?: string;
+  step?: V2StepVideoState;
+  current_step_resources?: V2StepVideoResourceBlock | null;
+  completed_step_resources?: Record<string, V2StepVideoResourceBlock>;
+}
+
+export interface V2StepVideoCreateResponse extends CreateVideoResponse {
+  status?: V2StepVideoStatus;
+  step?: V2StepVideoState;
+}
+
+export interface V2ExternalUserIdentity extends Omit<ExternalUserIdentity, 'provider'> {
+  provider?: string;
 }
 
 export interface V2SessionResponse {
@@ -1596,6 +1676,30 @@ export interface V2UserTokenResponse {
   expiryDate: string;
   expiresInSeconds?: number;
   refreshTokenExpiresAt?: string;
+  [key: string]: unknown;
+}
+
+export interface V2CreateExternalUserRequest extends V2ExternalUserIdentity {
+  external_user?: V2ExternalUserIdentity | null;
+  externalUser?: V2ExternalUserIdentity | null;
+}
+
+export interface V2CreateExternalUserReference {
+  provider?: string | null;
+  unique_key?: string | null;
+  external_user_id?: string | null;
+  external_app_id?: string | null;
+  [key: string]: unknown;
+}
+
+export interface V2CreateExternalUserResponse {
+  unique_key?: string | null;
+  provider?: string | null;
+  external_user_id?: string | null;
+  external_app_id?: string | null;
+  external_user?: ExternalUserSummary | null;
+  externalUser?: ExternalUserSummary | null;
+  reference?: V2CreateExternalUserReference;
   [key: string]: unknown;
 }
 
@@ -1757,6 +1861,7 @@ export interface VerifiedClientSessionResponse {
   avatarUrl?: string | null;
   provider?: string | null;
   externalUserId?: string | null;
+  uniqueKey?: string | null;
   externalAppId?: string | null;
   externalCompanyId?: string | null;
   generationCredits?: number;
@@ -1990,6 +2095,8 @@ function normalizeCreateVideoFromImageListInput(
     ['cta_logo', ['cta_logo', 'ctaLogo']],
     ['add_footer_animation', ['add_footer_animation', 'addFooterAnimation']],
     ['footer_metadata', ['footer_metadata', 'footerMetadata']],
+    ['limit_single_narrator', ['limit_single_narrator', 'limitSingleNarrator']],
+    ['add_narrator_avatar', ['add_narrator_avatar', 'addNarratorAvatar']],
     ['enable_subtitles', ['enable_subtitles', 'enableSubtitles']],
     ['font_key', ['font_key', 'fontKey']],
   ];
@@ -2006,6 +2113,12 @@ function normalizeCreateVideoFromImageListInput(
   assertOptionalBoolean(normalized.add_outro_focus_area, 'add_outro_focus_area');
   assertOptionalBoolean(normalized.generate_outro_image, 'generate_outro_image');
   assertOptionalBoolean(normalized.add_footer_animation, 'add_footer_animation');
+  assertOptionalBoolean(normalized.limit_single_narrator, 'limit_single_narrator');
+  assertOptionalBoolean(normalized.add_narrator_avatar, 'add_narrator_avatar');
+
+  if (normalized.add_narrator_avatar === true) {
+    normalized.limit_single_narrator = true;
+  }
 
   if (normalized.generate_outro_image === true) {
     const ctaUrl = typeof normalized.cta_url === 'string' ? normalized.cta_url.trim() : '';
@@ -2017,6 +2130,30 @@ function normalizeCreateVideoFromImageListInput(
   }
 
   return normalized as CreateVideoFromImageListInput;
+}
+
+function normalizeCreateV2StepImageToVideoInput(
+  input: CreateV2StepImageToVideoInput,
+): CreateVideoFromImageListInput {
+  const raw = input as Record<string, unknown>;
+  const normalized: Record<string, unknown> = { ...input };
+
+  if (!Array.isArray(input.image_urls) || input.image_urls.length === 0) {
+    const imageUrl =
+      getTrimmedString(raw.image_url) ??
+      getTrimmedString(raw.imageUrl) ??
+      getTrimmedString(raw.image);
+    if (!imageUrl) {
+      throw new Error('image_url or image_urls is required for createV2StepVideoFromImage');
+    }
+    normalized.image_urls = [imageUrl];
+  }
+
+  delete normalized.image_url;
+  delete normalized.imageUrl;
+  delete normalized.image;
+
+  return normalizeCreateVideoFromImageListInput(normalized as CreateVideoFromImageListInput);
 }
 
 function normalizeTranslateVideoInput(
@@ -2408,7 +2545,9 @@ export class SamsarClient {
     options?: V2RequestOptions,
   ): Promise<SamsarResult<T>> {
     const query = {
-      ...(options?.externalUser ? buildExternalUserQuery(options.externalUser) : {}),
+      ...(options?.externalUser
+        ? buildExternalUserQuery(options.externalUser, { requireProvider: false })
+        : {}),
       ...(options?.query ?? {}),
     };
 
@@ -2451,6 +2590,40 @@ export class SamsarClient {
 
   async listV2Requests(options?: V2RequestOptions): Promise<SamsarResult<V2RequestsListResponse>> {
     return this.getV2<V2RequestsListResponse>('requests', options);
+  }
+
+  async createV2ExternalUser(
+    payload: V2CreateExternalUserRequest,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<V2CreateExternalUserResponse>> {
+    const input = payload ?? {};
+    const nestedExternalUser = (input.external_user ?? input.externalUser ?? {}) as V2ExternalUserIdentity;
+    const uniqueKey = getTrimmedString(
+      nestedExternalUser.unique_key ??
+        nestedExternalUser.uniqueKey ??
+        input.unique_key ??
+        input.uniqueKey,
+    );
+    const externalUserId = getTrimmedString(
+      nestedExternalUser.external_user_id ??
+        nestedExternalUser.externalUserId ??
+        input.external_user_id ??
+        input.externalUserId,
+    );
+    const referenceKey = uniqueKey ?? externalUserId;
+    if (!referenceKey) {
+      throw new Error('unique_key or external_user_id is required');
+    }
+
+    return this.postV2<V2CreateExternalUserResponse>(
+      'user/create_external_user',
+      {
+        ...input,
+        unique_key: referenceKey,
+        ...(externalUserId ? { external_user_id: externalUserId } : {}),
+      },
+      options,
+    );
   }
 
   async createV2UserRechargeCredits(
@@ -2633,6 +2806,81 @@ export class SamsarClient {
     );
   }
 
+  async createV2StepVideoFromText(
+    input: CreateVideoFromTextInput,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<V2StepVideoCreateResponse>> {
+    const normalizedInput = normalizeCreateVideoFromTextInput(input);
+    return this.postV2<V2StepVideoCreateResponse>(
+      'video/step/text_to_video',
+      {
+        input: normalizedInput,
+        webhookUrl: options?.webhookUrl,
+      },
+      options,
+    );
+  }
+
+  async createV2StepTextToVideo(
+    input: CreateVideoFromTextInput,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<V2StepVideoCreateResponse>> {
+    return this.createV2StepVideoFromText(input, options);
+  }
+
+  async createV2StepVideoFromImage(
+    input: CreateV2StepImageToVideoInput,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<V2StepVideoCreateResponse>> {
+    const normalizedInput = normalizeCreateV2StepImageToVideoInput(input);
+    return this.postV2<V2StepVideoCreateResponse>(
+      'video/step/image_to_video',
+      {
+        input: normalizedInput,
+        webhookUrl: options?.webhookUrl,
+      },
+      options,
+    );
+  }
+
+  async createV2StepImageToVideo(
+    input: CreateV2StepImageToVideoInput,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<V2StepVideoCreateResponse>> {
+    return this.createV2StepVideoFromImage(input, options);
+  }
+
+  async getV2StepVideoStatus(
+    requestId: string,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<V2StepVideoStatusResponse>> {
+    const normalizedRequestId = getTrimmedString(requestId);
+    if (!normalizedRequestId) {
+      throw new Error('requestId is required');
+    }
+
+    return this.getV2<V2StepVideoStatusResponse>(
+      `video/step/${encodeURIComponent(normalizedRequestId)}/status`,
+      options,
+    );
+  }
+
+  async processNextV2StepVideo(
+    requestId: string,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<V2StepVideoStatusResponse>> {
+    const normalizedRequestId = getTrimmedString(requestId);
+    if (!normalizedRequestId) {
+      throw new Error('requestId is required');
+    }
+
+    return this.postV2<V2StepVideoStatusResponse>(
+      `video/step/${encodeURIComponent(normalizedRequestId)}/process_next`,
+      {},
+      options,
+    );
+  }
+
   async translateV2Video(
     input: TranslateVideoInput,
     options?: V2RequestOptions,
@@ -2731,7 +2979,9 @@ export class SamsarClient {
     options?: V2RequestOptions & { queryParams?: QueryParams },
   ): Promise<SamsarResult<GlobalStatusResponse | ExternalStatusResponse>> {
     const queryParams = {
-      ...(options?.externalUser ? buildExternalUserQuery(options.externalUser) : {}),
+      ...(options?.externalUser
+        ? buildExternalUserQuery(options.externalUser, { requireProvider: false })
+        : {}),
       ...(options?.queryParams ?? {}),
     };
 
@@ -4706,9 +4956,31 @@ export class SamsarClient {
       return body;
     }
 
+    const externalUser = normalizeExternalUserIdentity(options.externalUser, {
+      requireProvider: false,
+    });
+
+    if (!externalUser.provider) {
+      const referenceKey = externalUser.unique_key ?? externalUser.external_user_id;
+      return {
+        ...body,
+        unique_key: referenceKey as string,
+        ...(externalUser.external_user_id ? { external_user_id: externalUser.external_user_id } : {}),
+        ...(externalUser.external_app_id ? { external_app_id: externalUser.external_app_id } : {}),
+        ...(externalUser.external_company_id ? { external_company_id: externalUser.external_company_id } : {}),
+        ...(externalUser.external_account_id ? { external_account_id: externalUser.external_account_id } : {}),
+        ...(externalUser.email ? { email: externalUser.email } : {}),
+        ...(externalUser.username ? { username: externalUser.username } : {}),
+        ...(externalUser.display_name ? { display_name: externalUser.display_name } : {}),
+        ...(externalUser.avatar_url ? { avatar_url: externalUser.avatar_url } : {}),
+        ...(externalUser.user_type ? { user_type: externalUser.user_type } : {}),
+        ...(externalUser.metadata ? { metadata: externalUser.metadata } : {}),
+      };
+    }
+
     return {
       ...body,
-      external_user: normalizeExternalUserIdentity(options.externalUser),
+      external_user: externalUser,
     };
   }
 
@@ -4766,6 +5038,15 @@ function parseNumber(value?: string): number | undefined {
   return Number.isFinite(num) ? num : undefined;
 }
 
+function getTrimmedString(value: unknown): string | undefined {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed || undefined;
+}
+
 function removeEmptyHeaders(headers: Record<string, string | undefined | null>): Record<string, string> {
   const normalized: Record<string, string> = {};
   for (const [key, value] of Object.entries(headers)) {
@@ -4775,18 +5056,32 @@ function removeEmptyHeaders(headers: Record<string, string | undefined | null>):
   return normalized;
 }
 
-function normalizeExternalUserIdentity(externalUser: ExternalUserIdentity): Record<string, unknown> {
+function normalizeExternalUserIdentity(
+  externalUser: ExternalUserIdentity | V2ExternalUserIdentity,
+  { requireProvider = true }: { requireProvider?: boolean } = {},
+): Record<string, unknown> {
+  const provider = getTrimmedString(externalUser.provider);
+  const uniqueKey = getTrimmedString(
+    externalUser.unique_key ??
+      externalUser.uniqueKey,
+  );
   const externalUserId =
-    externalUser.external_user_id ??
-    externalUser.externalUserId;
+    getTrimmedString(externalUser.external_user_id) ??
+    getTrimmedString(externalUser.externalUserId) ??
+    uniqueKey;
 
-  if (!externalUser?.provider || !externalUserId) {
-    throw new Error('externalUser.provider and externalUser.external_user_id are required');
+  if ((requireProvider && !provider) || !externalUserId) {
+    throw new Error(
+      requireProvider
+        ? 'externalUser.provider and externalUser.external_user_id or externalUser.unique_key are required'
+        : 'externalUser.external_user_id or externalUser.unique_key is required',
+    );
   }
 
   return {
-    provider: externalUser.provider,
+    ...(provider ? { provider } : {}),
     external_user_id: externalUserId,
+    ...(uniqueKey ? { unique_key: uniqueKey } : {}),
     ...(externalUser.external_app_id || externalUser.externalAppId
       ? { external_app_id: externalUser.external_app_id ?? externalUser.externalAppId }
       : {}),
@@ -4817,11 +5112,15 @@ function normalizeExternalUserIdentity(externalUser: ExternalUserIdentity): Reco
   };
 }
 
-function buildExternalUserQuery(externalUser: ExternalUserIdentity): QueryParams {
-  const normalized = normalizeExternalUserIdentity(externalUser);
+function buildExternalUserQuery(
+  externalUser: ExternalUserIdentity | V2ExternalUserIdentity,
+  { requireProvider = true }: { requireProvider?: boolean } = {},
+): QueryParams {
+  const normalized = normalizeExternalUserIdentity(externalUser, { requireProvider });
   return {
     provider: normalized.provider as string,
     external_user_id: normalized.external_user_id as string,
+    unique_key: (normalized.unique_key as string | undefined) ?? undefined,
     external_app_id: (normalized.external_app_id as string | undefined) ?? undefined,
     external_company_id: (normalized.external_company_id as string | undefined) ?? undefined,
     external_account_id: (normalized.external_account_id as string | undefined) ?? undefined,

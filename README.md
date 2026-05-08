@@ -77,7 +77,7 @@ const videoFromImages = await samsar.createVideoFromImageList(
 await samsar.createVideoFromImageList({
   image_urls: ['https://example.com/a.jpg', 'https://example.com/b.jpg'],
   prompt: 'Product launch teaser with a clean final CTA',
-  video_model: 'KLING3.0',
+  video_model: 'KLINGIMGTOVID3PRO',
   aspect_ratio: '16:9',
   outro_image_url: 'https://cdn.example.com/outro.png',
   add_outro_animation: true,
@@ -94,6 +94,7 @@ await samsar.createVideoFromImageList({
   prompt: 'Travel offer reel with a scannable booking outro',
   video_model: 'RUNWAYML',
   aspect_ratio: '9:16',
+  add_narrator_avatar: true,
   generate_outro_image: true,
   cta_url: 'https://example.com/book',
   cta_text_top: 'Scan to book',
@@ -434,6 +435,7 @@ const platform = new SamsarClient({
 
 const externalUser = {
   provider: 'whop',
+  unique_key: 'whop:usr_123',
   external_user_id: 'usr_123',
   external_app_id: 'app_abc',
   username: 'roy24x7',
@@ -544,25 +546,28 @@ console.log(externalLibrary.data.requests.map((request) => request.request_id));
 ```
 
 Video model support notes:
-- `createVideoFromText` image model keys include: `GPTIMAGE2`, `IMAGEN4`, `SEEDREAM`, `HUNYUAN`, `NANOBANANA2`.
-- `createVideoFromText` supports all express video models: `RUNWAYML`, `KLINGIMGTOVID3PRO`, `HAILUO`, `HAILUOPRO`, `SEEDANCEI2V` (Seedance 2.0), `VEO3.1I2V`, `VEO3.1I2VFAST`, `SORA2`, `SORA2PRO`.
+- `createVideoFromText` image model keys include: `GPTIMAGE2`, `IMAGEN4`, `SEEDREAM`, `NANOBANANA2`, `CUSTOM_TEXT_TO_IMAGE`.
+- `createVideoFromText` supports these video models: `VEO3.1I2V`, `VEO3.1I2VFAST`, `SEEDANCEI2V` (Seedance 2.0), `KLINGIMGTOVID3PRO`, `RUNWAYML`, and `CUSTOM_IMAGE_TO_VIDEO`.
 - `createVideoFromText` accepts either a provided outro (`outro_image_url`) or server-generated QR outro (`generate_outro_image: true` with `cta_url`). It can also render bottom CTA footer QR cards with `add_footer_animation` and `footer_metadata`; one footer item applies to every generated scene, while multiple items map by scene index.
-- `createVideoFromImageList` supports `VEO3.1I2V`, `SEEDANCEI2V`, `KLING3.0`, and `RUNWAYML` via `video_model`; if omitted, it defaults to `VEO3.1I2V`. `KLINGIMGTOVID3PRO` is also accepted as a compatibility alias for `KLING3.0`. Use `aspect_ratio: '16:9'` or `'9:16'`; omitted or invalid values fall back to `16:9`.
+- `createVideoFromImageList` supports `VEO3.1I2V`, `VEO3.1I2VFAST`, `SEEDANCEI2V`, `KLINGIMGTOVID3PRO`, `RUNWAYML`, and `CUSTOM_IMAGE_TO_VIDEO` via `video_model`; if omitted, it defaults to `VEO3.1I2V`. Use `aspect_ratio: '16:9'` or `'9:16'`; omitted or invalid values fall back to `16:9`.
 - `createVideoFromImageList` accepts either a provided outro (`outro_image_url`) or server-generated QR outro (`generate_outro_image: true` with `cta_url`). Do not combine the two modes in a single request.
 - `createVideoFromImageList` can render per-scene footer QR cards by setting `add_footer_animation: true` and providing one `footer_metadata` item per image scene.
+- `createVideoFromImageList` accepts `limit_single_narrator: true` to keep all narration under one narrator identity. `add_narrator_avatar: true` automatically enables `limit_single_narrator`, generates an influencer-style human narrator avatar, and overlays it bottom-center or centered in the footer row when footer metadata is present.
 - `updateVideoOutroImage` accepts either a replacement outro image URL (`outro_image_url`, `outroImageUrl`, `new_outro_image_url`) or a generated QR CTA outro (`generate_outro_image: true` with `cta_url`, or just `cta_url` when no outro image URL is supplied). Generated outro updates reuse the existing session image layers for tiling and only queue frame/video regeneration.
 - `updateVideoFooterImage` updates the footer CTA on a cloned session with `cta_text`, `cta_logo`, and/or `cta_url`, or removes all scene footers with `remove_footer: true`. Footer updates queue only frame/video regeneration.
 - `cloneVideo` creates a deep copy of a completed session and queues only the final video render so the clone receives a new rendered video path and URL. It does not charge credits.
 - Main video methods and external-user methods accept the same generated outro and footer parameters. The API can resolve either internal session ids or external `extreq_...` ids on repeated video routes, so client code can keep using `translateVideo`, `joinVideos`, `addSubtitles`, `removeSubtitles`, `addVideoOutroImage`, `updateVideoOutroImage`, and `updateVideoFooterImage`; the explicit external variants are available when you want to call `/external_users/*` directly. Do not strip the `extreq_` prefix.
 - Completed video status, latest-version, and completed-session list responses expose `has_subtitles` and `result_language` when the session metadata is available.
 - `publishPublication`, `editPublication`, and `revokePublication` manage public feed publications for completed sessions through free `/publications/*` endpoints. They work with account API keys, customer sub-account API keys, and client auth tokens when the session belongs to the authenticated actor.
-- Image-list video pricing is per rendered second: `VEO3.1I2V` and `SEEDANCEI2V` are 75 credits/sec, `KLING3.0` is 50 credits/sec, and `RUNWAYML` is 25 credits/sec.
+- Text-to-video and image-list video pricing use the same per-rendered-second rates for standard express models: `VEO3.1I2V` is 60 credits/sec, `VEO3.1I2VFAST` is 36 credits/sec, `SEEDANCEI2V` is 30 credits/sec, `KLINGIMGTOVID3PRO` is 36 credits/sec, and `RUNWAYML` is 30 credits/sec. Image-list narrator avatar generation adds 4 credits/sec when `add_narrator_avatar` is true.
+- Standard express video models expose a per-second pricing distribution through `EXPRESS_VIDEO_PRICING_DISTRIBUTION_PER_SECOND_BY_MODEL`: pipeline 4, inference 4, image gen/edit 2, speech 2, music 2, effects and lipsync 2, and video as the model-specific remainder.
 
 Upcoming `/v2` omni route adapters:
 - `/v2` is additive; `/v1` is not deprecated.
 - `createV2VideoFromText`, `createV2VideoFromImageList`, `translateV2Video`, `cloneV2Video`, `updateV2VideoOutroImage`, `updateV2VideoFooterImage`, `addV2VideoOutroImage`, `getV2Status`, `getV2Credits`, `listV2Requests`, and `createV2Session` call the new omni route surface.
-- Programmatic user billing helpers include `createV2UserRechargeCredits`, `refreshV2UserToken`, `createV2UserAppKey`, `refreshV2UserAppKey`, `getV2UserCredits`, `getV2UserUsageLogs`, and `getV2UserPaymentStatus`.
-- Omit `externalUser` for internal account billing, pass `externalUser` to scope an external user with the account API key, or authenticate the client directly with an external-user auth token/API key.
+- Step-controlled video helpers include `createV2StepVideoFromText`, `createV2StepTextToVideo`, `createV2StepVideoFromImage`, `createV2StepImageToVideo`, `getV2StepVideoStatus`, and `processNextV2StepVideo`.
+- Programmatic user helpers include `createV2ExternalUser`, `createV2UserRechargeCredits`, `refreshV2UserToken`, `createV2UserAppKey`, `refreshV2UserAppKey`, `getV2UserCredits`, `getV2UserUsageLogs`, and `getV2UserPaymentStatus`.
+- Omit `externalUser` for internal account billing, pass `externalUser` to scope an external user with the account API key, or authenticate the client directly with an external-user auth token/API key. V2 external users can be referenced by `unique_key`; if `unique_key` is omitted during creation, the server uses `external_user_id` as the key.
 
 ```ts
 const v2Video = await platform.createV2VideoFromImageList({
@@ -576,7 +581,7 @@ const v2Video = await platform.createV2VideoFromImageList({
 const v2ExternalVideo = await platform.createV2VideoFromImageList(
   {
     image_urls: ['https://cdn.example.com/a.png', 'https://cdn.example.com/b.png'],
-    video_model: 'KLING3.0',
+    video_model: 'KLINGIMGTOVID3PRO',
   },
   { externalUser },
 );
@@ -595,6 +600,56 @@ const v2Clone = await platform.cloneV2Video({
 
 const v2Status = await platform.getV2Status(v2Video.data.request_id!);
 console.log(v2Status.data.status);
+```
+
+Step-controlled video generation pauses after each completed stage until you call `processNextV2StepVideo`:
+
+```ts
+const stepVideo = await platform.createV2StepVideoFromText({
+  prompt: 'A 20 second launch teaser for a new travel app',
+  image_model: 'GPTIMAGE2',
+  video_model: 'RUNWAYML',
+  duration: 20,
+  aspect_ratio: '16:9',
+  enable_subtitles: true,
+});
+
+let stepStatus = await platform.getV2StepVideoStatus(stepVideo.data.request_id);
+if (stepStatus.data.step_status === 'COMPLETED') {
+  console.log(stepStatus.data.current_step, stepStatus.data.current_step_resources);
+  stepStatus = await platform.processNextV2StepVideo(stepVideo.data.request_id);
+}
+
+const stepImageVideo = await platform.createV2StepVideoFromImage({
+  image_url: 'https://cdn.example.com/product-frame.png',
+  prompt: 'Turn this product frame into a cinematic ad',
+  video_model: 'KLINGIMGTOVID3PRO',
+  aspect_ratio: '16:9',
+});
+console.log(stepImageVideo.data.step?.current_step);
+```
+
+Create and reference a V2 external user:
+
+```ts
+const createdExternalUser = await platform.createV2ExternalUser({
+  unique_key: 'wallet:0x742d35Cc6634C0532925a3b844Bc454e4438f44e',
+  email: 'member@example.com',
+  display_name: 'Member Name',
+});
+
+const v2RegisteredExternalVideo = await platform.createV2VideoFromImageList(
+  {
+    image_urls: ['https://cdn.example.com/a.png', 'https://cdn.example.com/b.png'],
+    video_model: 'RUNWAYML',
+  },
+  {
+    externalUser: {
+      unique_key: createdExternalUser.data.unique_key!,
+    },
+  },
+);
+console.log(v2RegisteredExternalVideo.data.request_id);
 ```
 
 Programmatic user recharge and OAuth-style refresh token rotation:
