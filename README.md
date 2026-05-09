@@ -547,9 +547,9 @@ console.log(externalLibrary.data.requests.map((request) => request.request_id));
 
 Video model support notes:
 - `createVideoFromText` image model keys include: `GPTIMAGE2`, `IMAGEN4`, `SEEDREAM`, `NANOBANANA2`, `CUSTOM_TEXT_TO_IMAGE`.
-- `createVideoFromText` supports these video models: `VEO3.1I2V`, `VEO3.1I2VFAST`, `SEEDANCEI2V` (Seedance 2.0), `KLINGIMGTOVID3PRO`, `RUNWAYML`, and `CUSTOM_IMAGE_TO_VIDEO`.
+- `createVideoFromText` supports these video models: `RUNWAYML`, `VEO3.1I2V`, `VEO3.1I2VFAST`, `SEEDANCEI2V` (Seedance 1.5), `KLINGIMGTOVID3PRO`, and `CUSTOM_IMAGE_TO_VIDEO`.
 - `createVideoFromText` accepts either a provided outro (`outro_image_url`) or server-generated QR outro (`generate_outro_image: true` with `cta_url`). It can also render bottom CTA footer QR cards with `add_footer_animation` and `footer_metadata`; one footer item applies to every generated scene, while multiple items map by scene index.
-- `createVideoFromImageList` supports `VEO3.1I2V`, `VEO3.1I2VFAST`, `SEEDANCEI2V`, `KLINGIMGTOVID3PRO`, `RUNWAYML`, and `CUSTOM_IMAGE_TO_VIDEO` via `video_model`; if omitted, it defaults to `VEO3.1I2V`. Use `aspect_ratio: '16:9'` or `'9:16'`; omitted or invalid values fall back to `16:9`.
+- `createVideoFromImageList` supports `RUNWAYML`, `VEO3.1I2V`, `VEO3.1I2VFAST`, `SEEDANCEI2V`, `KLINGIMGTOVID3PRO`, and `CUSTOM_IMAGE_TO_VIDEO` via `video_model`; if omitted, it defaults to `RUNWAYML`. Use `aspect_ratio: '16:9'` or `'9:16'`; omitted or invalid values fall back to `16:9`.
 - `createVideoFromImageList` accepts either a provided outro (`outro_image_url`) or server-generated QR outro (`generate_outro_image: true` with `cta_url`). Do not combine the two modes in a single request.
 - `createVideoFromImageList` can render per-scene footer QR cards by setting `add_footer_animation: true` and providing one `footer_metadata` item per image scene.
 - `createVideoFromImageList` accepts `limit_single_narrator: true` to keep all narration under one narrator identity. `add_narrator_avatar: true` automatically enables `limit_single_narrator`, generates an influencer-style human narrator avatar, and overlays it bottom-center or centered in the footer row when footer metadata is present.
@@ -564,10 +564,11 @@ Video model support notes:
 
 Upcoming `/v2` omni route adapters:
 - `/v2` is additive; `/v1` is not deprecated.
-- `createV2VideoFromText`, `createV2VideoFromImageList`, `translateV2Video`, `cloneV2Video`, `updateV2VideoOutroImage`, `updateV2VideoFooterImage`, `addV2VideoOutroImage`, `getV2Status`, `getV2Credits`, `listV2Requests`, and `createV2Session` call the new omni route surface.
-- Step-controlled video helpers include `createV2StepVideoFromText`, `createV2StepTextToVideo`, `createV2StepVideoFromImage`, `createV2StepImageToVideo`, `getV2StepVideoStatus`, and `processNextV2StepVideo`.
+- `createV2VideoFromText`, `createV2VideoFromImageList`, `translateV2Video`, `cloneV2Video`, `updateV2VideoOutroImage`, `updateV2VideoFooterImage`, `addV2VideoOutroImage`, `getV2Status`, `getV2StatusDetailed`, `getV2Credits`, `listV2Requests`, and `createV2Session` call the new omni route surface.
+- Step-controlled video helpers include `createV2StepVideoFromText`, `createV2StepTextToVideo`, `createV2StepVideoFromImage`, `createV2StepImageToVideo`, `getV2StepVideoStatus`, `getV2StepVideoStatusDetailed`, and `processNextV2StepVideo`.
 - Programmatic user helpers include `createV2ExternalUser`, `createV2UserRechargeCredits`, `refreshV2UserToken`, `createV2UserAppKey`, `refreshV2UserAppKey`, `getV2UserCredits`, `getV2UserUsageLogs`, and `getV2UserPaymentStatus`.
 - Omit `externalUser` for internal account billing, pass `externalUser` to scope an external user with the account API key, or authenticate the client directly with an external-user auth token/API key. V2 external users can be referenced by `unique_key`; if `unique_key` is omitted during creation, the server uses `external_user_id` as the key.
+- Detailed status adapters return the normal status payload plus a normalized `session` preview shape with `layers`, `audioLayers`, `globalAudioLayers`, and `globalVideos`. Layer timing uses `startTime` and `endTime` so clients can preview generated images, scene clips, and speech before final render completion.
 
 ```ts
 const v2Video = await platform.createV2VideoFromImageList({
@@ -600,6 +601,9 @@ const v2Clone = await platform.cloneV2Video({
 
 const v2Status = await platform.getV2Status(v2Video.data.request_id!);
 console.log(v2Status.data.status);
+
+const v2Detailed = await platform.getV2StatusDetailed(v2Video.data.request_id!);
+console.log(v2Detailed.data.session?.previewStage, v2Detailed.data.session?.layers?.[0]?.preview?.url);
 ```
 
 Step-controlled video generation pauses after each completed stage until you call `processNextV2StepVideo`:
@@ -617,6 +621,8 @@ const stepVideo = await platform.createV2StepVideoFromText({
 let stepStatus = await platform.getV2StepVideoStatus(stepVideo.data.request_id);
 if (stepStatus.data.step_status === 'COMPLETED') {
   console.log(stepStatus.data.current_step, stepStatus.data.current_step_resources);
+  const stepDetailed = await platform.getV2StepVideoStatusDetailed(stepVideo.data.request_id);
+  console.log(stepDetailed.data.session?.previewStage, stepDetailed.data.session?.layers?.[0]?.preview?.url);
   stepStatus = await platform.processNextV2StepVideo(stepVideo.data.request_id);
 }
 

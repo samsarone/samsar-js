@@ -136,11 +136,11 @@ export interface FooterMetadataItem {
 export type ImageListToVideoAspectRatio = '16:9' | '9:16';
 
 export type ImageListToVideoModel =
+  | 'RUNWAYML'
   | 'VEO3.1I2V'
   | 'VEO3.1I2VFAST'
   | 'SEEDANCEI2V'
   | 'KLINGIMGTOVID3PRO'
-  | 'RUNWAYML'
   | 'CUSTOM_IMAGE_TO_VIDEO';
 
 export interface ImageListToVideoItem {
@@ -1569,12 +1569,148 @@ export type V2StepVideoStage =
   | 'image_generation'
   | 'speech_generation'
   | 'music_generation'
+  | 'audio_generation'
   | 'ai_video_generation'
   | 'lip_sync_generation'
   | 'sound_effect_generation'
+  | 'narrator_avatar_generation'
+  | 'delete_reflow'
+  | 'timeline_reflowed'
+  | 'transcript_generation'
+  | 'frame_generation'
   | 'video_generation';
 
 export type V2StepVideoStatus = 'INIT' | 'PENDING' | 'COMPLETED' | 'FAILED' | string;
+
+export interface VideoSessionPreviewAsset {
+  status?: V2StepVideoStatus;
+  url?: string | null;
+  editStatus?: string | null;
+  description?: string | null;
+  [key: string]: unknown;
+}
+
+export interface VideoSessionLayerPreview {
+  stage?: V2StepVideoStage | 'user_video' | string;
+  type?: 'image' | 'video' | 'audio' | string;
+  url?: string | null;
+  [key: string]: unknown;
+}
+
+export interface VideoSessionPreviewLayer {
+  index: number;
+  id?: string | null;
+  startTime: number;
+  endTime?: number | null;
+  duration?: number | null;
+  status?: string | null;
+  prompt?: string | null;
+  videoPrompt?: string | null;
+  aiVideoType?: string | null;
+  baseImageType?: string | null;
+  soundEffectPrompt?: string | null;
+  image?: VideoSessionPreviewAsset;
+  aiVideo?: VideoSessionPreviewAsset | null;
+  lipSyncVideo?: VideoSessionPreviewAsset | null;
+  soundEffectVideo?: VideoSessionPreviewAsset | null;
+  userVideo?: VideoSessionPreviewAsset | null;
+  preview?: VideoSessionLayerPreview | null;
+  [key: string]: unknown;
+}
+
+export interface VideoSessionPreviewAudioLayer {
+  index: number;
+  id?: string | null;
+  type?: string;
+  status?: V2StepVideoStatus;
+  startTime: number;
+  endTime?: number | null;
+  duration?: number | null;
+  sourceTrimStartTime?: number | null;
+  prompt?: string | null;
+  url?: string | null;
+  remoteAudioLinks?: string[];
+  volume?: number | null;
+  isEnabled?: boolean | null;
+  defaultSelected?: boolean | null;
+  speaker?: string | null;
+  provider?: string | null;
+  speakerCharacterName?: string | null;
+  lyrics?: string | null;
+  connectedLayerId?: string | null;
+  connectedLayerIndex?: number | null;
+  audioBindingMode?: string | null;
+  bindToLayer?: boolean | null;
+  addSubtitles?: boolean | null;
+  subtitleFont?: string | null;
+  subtitleWordAnimation?: string | null;
+  transcriptAlignment?: Record<string, unknown> | null;
+  [key: string]: unknown;
+}
+
+export interface VideoSessionPreviewGlobalVideo {
+  index: number;
+  id?: string | null;
+  type?: 'video' | string;
+  source?: string | null;
+  title?: string | null;
+  status?: V2StepVideoStatus;
+  startTime: number;
+  endTime?: number | null;
+  duration?: number | null;
+  url?: string | null;
+  framesPerSecond?: number | null;
+  [key: string]: unknown;
+}
+
+export interface VideoSessionPreviewResult {
+  url?: string | null;
+  remoteURL?: string | null;
+  videoLink?: string | null;
+  hasSubtitles?: boolean;
+  hasFooter?: boolean;
+  language?: string | null;
+  [key: string]: unknown;
+}
+
+export interface VideoStatusDetailedSession {
+  id?: string | null;
+  requestId?: string | null;
+  type?: 'video' | string;
+  routeType?: 'express' | 'step' | string;
+  aspectRatio?: string | null;
+  framesPerSecond?: number | null;
+  duration?: number;
+  language?: string | null;
+  languageString?: string | null;
+  hasSubtitles?: boolean;
+  hasFooter?: boolean;
+  inputPrompt?: string | null;
+  generationType?: string | null;
+  provider?: string | null;
+  currentStage?: V2StepVideoStage | string;
+  previewStage?: V2StepVideoStage | string;
+  completedStages?: Array<V2StepVideoStage | string>;
+  stages?: Record<string, V2StepVideoStatus | unknown>;
+  layers?: VideoSessionPreviewLayer[];
+  audioLayers?: VideoSessionPreviewAudioLayer[];
+  globalAudioLayers?: VideoSessionPreviewAudioLayer[];
+  globalVideos?: VideoSessionPreviewGlobalVideo[];
+  result?: VideoSessionPreviewResult;
+  createdAt?: string | null;
+  updatedAt?: string | null;
+  [key: string]: unknown;
+}
+
+export interface GlobalStatusDetailedResponse extends GlobalStatusResponse {
+  status_detail_schema?: 'video_session_preview.v1' | string;
+  session?: VideoStatusDetailedSession | null;
+}
+
+export interface ExternalStatusDetailedResponse extends ExternalStatusResponse {
+  status_detail_schema?: 'video_session_preview.v1' | string;
+  session?: VideoStatusDetailedSession | null;
+}
 
 export interface V2StepVideoState {
   enabled?: boolean;
@@ -1607,6 +1743,11 @@ export interface V2StepVideoStatusResponse extends GlobalStatusResponse {
   step?: V2StepVideoState;
   current_step_resources?: V2StepVideoResourceBlock | null;
   completed_step_resources?: Record<string, V2StepVideoResourceBlock>;
+}
+
+export interface V2StepVideoDetailedStatusResponse extends V2StepVideoStatusResponse {
+  status_detail_schema?: 'video_session_preview.v1' | string;
+  session?: VideoStatusDetailedSession | null;
 }
 
 export interface V2StepVideoCreateResponse extends CreateVideoResponse {
@@ -2865,6 +3006,28 @@ export class SamsarClient {
     );
   }
 
+  async getV2StepVideoStatusDetailed(
+    requestId: string,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<V2StepVideoDetailedStatusResponse>> {
+    const normalizedRequestId = getTrimmedString(requestId);
+    if (!normalizedRequestId) {
+      throw new Error('requestId is required');
+    }
+
+    return this.getV2<V2StepVideoDetailedStatusResponse>(
+      `video/step/${encodeURIComponent(normalizedRequestId)}/status_detailed`,
+      options,
+    );
+  }
+
+  async getV2StepVideoDetailedStatus(
+    requestId: string,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<V2StepVideoDetailedStatusResponse>> {
+    return this.getV2StepVideoStatusDetailed(requestId, options);
+  }
+
   async processNextV2StepVideo(
     requestId: string,
     options?: V2RequestOptions,
@@ -2990,6 +3153,31 @@ export class SamsarClient {
       path: this.buildV2Url('status'),
       queryParams,
     }) as Promise<SamsarResult<GlobalStatusResponse | ExternalStatusResponse>>;
+  }
+
+  async getV2StatusDetailed(
+    requestId: string,
+    options?: V2RequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<GlobalStatusDetailedResponse | ExternalStatusDetailedResponse>> {
+    const queryParams = {
+      ...(options?.externalUser
+        ? buildExternalUserQuery(options.externalUser, { requireProvider: false })
+        : {}),
+      ...(options?.queryParams ?? {}),
+    };
+
+    return this.getStatus(requestId, {
+      ...options,
+      path: this.buildV2Url('status_detailed'),
+      queryParams,
+    }) as Promise<SamsarResult<GlobalStatusDetailedResponse | ExternalStatusDetailedResponse>>;
+  }
+
+  async getV2DetailedStatus(
+    requestId: string,
+    options?: V2RequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<GlobalStatusDetailedResponse | ExternalStatusDetailedResponse>> {
+    return this.getV2StatusDetailed(requestId, options);
   }
 
   /**
@@ -4777,6 +4965,21 @@ export class SamsarClient {
     });
 
     return response as SamsarResult<ExternalStatusResponse>;
+  }
+
+  /**
+   * Retrieve external-user status plus normalized video-session preview data.
+   */
+  async getExternalStatusDetailed(
+    requestId: string,
+    options?: SamsarRequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<ExternalStatusDetailedResponse>> {
+    const response = await this.getStatus(requestId, {
+      ...options,
+      path: 'external_users/status_detailed',
+    });
+
+    return response as SamsarResult<ExternalStatusDetailedResponse>;
   }
 
   /**
