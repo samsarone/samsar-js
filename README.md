@@ -564,7 +564,7 @@ Video model support notes:
 
 Upcoming `/v2` omni route adapters:
 - `/v2` is additive; `/v1` is not deprecated.
-- `createV2VideoFromText`, `createV2VideoFromImageList`, `translateV2Video`, `cloneV2Video`, `updateV2VideoOutroImage`, `updateV2VideoFooterImage`, `addV2VideoOutroImage`, `getV2Status`, `getV2StatusDetailed`, `getV2Credits`, `listV2Requests`, and `createV2Session` call the new omni route surface.
+- `createV2VideoFromText`, `createV2VideoFromImageList`, `translateV2Video`, `cloneV2Video`, `regenerateV2VideoAvatar`, `updateV2VideoOutroImage`, `updateV2VideoFooterImage`, `addV2VideoOutroImage`, `getV2Status`, `getV2StatusDetailed`, `getV2Credits`, `listV2Requests`, and `createV2Session` call the new omni route surface.
 - Step-controlled video helpers include `createV2StepVideoFromText`, `createV2StepTextToVideo`, `createV2StepVideoFromImage`, `createV2StepImageToVideo`, `getV2StepVideoStatus`, `getV2StepVideoStatusDetailed`, and `processNextV2StepVideo`.
 - Programmatic user helpers include `createV2ExternalUser`, `createV2UserRechargeCredits`, `refreshV2UserToken`, `createV2UserAppKey`, `refreshV2UserAppKey`, `getV2UserCredits`, `getV2UserUsageLogs`, and `getV2UserPaymentStatus`.
 - Omit `externalUser` for internal account billing, pass `externalUser` to scope an external user with the account API key, or authenticate the client directly with an external-user auth token/API key. V2 external users can be referenced by `unique_key`; if `unique_key` is omitted during creation, the server uses `external_user_id` as the key.
@@ -596,6 +596,10 @@ const v2Translated = await platform.translateV2Video({
 });
 
 const v2Clone = await platform.cloneV2Video({
+  videoSessionId: v2Video.data.request_id!,
+});
+
+const v2AvatarRerender = await platform.regenerateV2VideoAvatar({
   videoSessionId: v2Video.data.request_id!,
 });
 

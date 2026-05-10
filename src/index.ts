@@ -3074,6 +3074,21 @@ export class SamsarClient {
     );
   }
 
+  async regenerateV2VideoAvatar(
+    input: CloneVideoInput,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<CloneVideoResponse | ExternalRequestResponse>> {
+    const normalizedInput = normalizeCloneVideoInput(input, 'regenerateV2VideoAvatar');
+    return this.postV2<CloneVideoResponse | ExternalRequestResponse>(
+      'video/regenerate_avatar',
+      {
+        input: normalizedInput,
+        webhookUrl: options?.webhookUrl,
+      },
+      options,
+    );
+  }
+
   async uploadV2ImageData(
     imageData: string[],
     options?: V2RequestOptions,
