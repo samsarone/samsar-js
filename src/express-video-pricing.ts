@@ -10,7 +10,14 @@ export const EXPRESS_VIDEO_FIXED_PRICING_COMPONENTS_PER_SECOND = {
 export type ExpressVideoPricingDistribution = typeof EXPRESS_VIDEO_FIXED_PRICING_COMPONENTS_PER_SECOND & {
   video: number;
   total: number;
+  optionalAddons: ExpressVideoOptionalAddons;
 };
+
+export const EXPRESS_VIDEO_OPTIONAL_ADDON_CREDITS_PER_SECOND = {
+  express_cta_generation: 1,
+} as const;
+
+export type ExpressVideoOptionalAddons = typeof EXPRESS_VIDEO_OPTIONAL_ADDON_CREDITS_PER_SECOND;
 
 export const EXPRESS_VIDEO_FIXED_COMPONENTS_TOTAL_PER_SECOND = Object.values(
   EXPRESS_VIDEO_FIXED_PRICING_COMPONENTS_PER_SECOND,
@@ -22,6 +29,7 @@ export const EXPRESS_VIDEO_CREDITS_PER_SECOND_BY_MODEL = {
   SEEDANCEI2V: 30,
   KLINGIMGTOVID3PRO: 36,
   KLINGIMGTOVIDTURBO: 36,
+  HAPPYHORSEI2V: 36,
   RUNWAYML: 30,
 } as const;
 
@@ -33,6 +41,7 @@ export const EXPRESS_VIDEO_PRICING_DISTRIBUTION_PER_SECOND_BY_MODEL = Object.fro
         ...EXPRESS_VIDEO_FIXED_PRICING_COMPONENTS_PER_SECOND,
         video: total - EXPRESS_VIDEO_FIXED_COMPONENTS_TOTAL_PER_SECOND,
         total,
+        optionalAddons: EXPRESS_VIDEO_OPTIONAL_ADDON_CREDITS_PER_SECOND,
       },
     ]),
 ) as Record<string, ExpressVideoPricingDistribution>;

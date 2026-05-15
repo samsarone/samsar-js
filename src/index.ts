@@ -17,6 +17,7 @@ const DEBUG = (() => {
 type FetchLike = (input: RequestInfo | URL, init?: RequestInit) => Promise<Response>;
 type QueryValue = string | number | boolean | null | undefined;
 type QueryParams = Record<string, QueryValue>;
+const DEFAULT_V2_STEP_MANUAL_STAGES = ['ai_video_generation'] as const;
 
 export interface SamsarClientOptions {
   apiKey?: string;
@@ -55,7 +56,16 @@ export interface FontOptions {
   family?: string;
 }
 
-export interface CreateVideoFromTextInput {
+export type V2StepGenerationMode = 'one_step' | 'two_step';
+
+export interface V2StepGenerationOptions {
+  auto_render_full_video?: boolean;
+  autoRenderFullVideo?: boolean;
+  manual_step_stages?: Array<V2StepVideoStage | string>;
+  manualStepStages?: Array<V2StepVideoStage | string>;
+}
+
+export interface CreateVideoFromTextInput extends V2StepGenerationOptions {
   prompt: string;
   image_model: string;
   video_model: string;
@@ -141,7 +151,7 @@ export type ImageListToVideoModel =
   | 'VEO3.1I2VFAST'
   | 'SEEDANCEI2V'
   | 'KLINGIMGTOVID3PRO'
-  | 'CUSTOM_IMAGE_TO_VIDEO';
+  | 'HAPPYHORSEI2V';
 
 export interface ImageListToVideoItem {
   image_url?: string;
@@ -171,7 +181,7 @@ export interface ImageListToVideoItem {
   [key: string]: unknown;
 }
 
-export interface CreateVideoFromImageListInput {
+export interface CreateVideoFromImageListInput extends V2StepGenerationOptions {
   image_urls: Array<string | ImageListToVideoItem>;
   metadata?: Record<string, unknown>;
   prompt?: string;
@@ -204,6 +214,12 @@ export interface CreateVideoFromImageListInput {
   outroFocusArea?: OutroFocusArea | null;
   generate_outro_image?: boolean;
   generateOutroImage?: boolean;
+  express_cta_generation?: boolean;
+  expressCtaGeneration?: boolean;
+  auto_generate_cta_text?: boolean;
+  autoGenerateCtaText?: boolean;
+  generate_cta_texts?: boolean;
+  generateCtaTexts?: boolean;
   cta_url?: string;
   ctaUrl?: string;
   cta_text_top?: string;
@@ -1564,6 +1580,10 @@ export interface V2RequestOptions extends SamsarRequestOptions {
   webhookUrl?: string;
 }
 
+export interface V2StepVideoRequestOptions extends V2RequestOptions, V2StepGenerationOptions {
+  stepMode?: V2StepGenerationMode;
+}
+
 export type V2StepVideoStage =
   | 'prompt_generation'
   | 'image_generation'
@@ -1719,7 +1739,11 @@ export interface V2StepVideoState {
   current_step?: V2StepVideoStage | string | null;
   current_step_label?: string | null;
   next_step?: V2StepVideoStage | string | null;
+  manual_step_stages?: Array<V2StepVideoStage | string>;
+  auto_advance_step_stages?: Array<V2StepVideoStage | string>;
   waiting_for_process_next?: boolean;
+  requires_user_action?: boolean;
+  can_process_next?: boolean;
   updated_at?: string | null;
   [key: string]: unknown;
 }
@@ -2167,6 +2191,107 @@ function assertOptionalBoolean(
   }
 }
 
+function getFirstDefinedInputValue(raw: Record<string, unknown>, aliases: string[]): unknown {
+  for (const alias of aliases) {
+    if (Object.prototype.hasOwnProperty.call(raw, alias)) {
+      return raw[alias];
+    }
+  }
+  return undefined;
+}
+
+function normalizeV2StepGenerationMode(value: unknown): V2StepGenerationMode | null {
+  if (typeof value !== 'string') {
+    return null;
+  }
+  const normalized = value.trim().toLowerCase().replace(/\s+/g, '_');
+  if (['one_step', 'one-step', '1_step', '1-step', 'express', 'auto', 'automatic'].includes(normalized)) {
+    return 'one_step';
+  }
+  if (['two_step', 'two-step', '2_step', '2-step', 'manual'].includes(normalized)) {
+    return 'two_step';
+  }
+  return null;
+}
+
+function normalizeV2StepBoolean(value: unknown, fieldName: string): boolean | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  throw new Error(`${fieldName} must be a boolean for step video generation`);
+}
+
+function normalizeV2ManualStepStages(value: unknown): Array<V2StepVideoStage | string> | undefined {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value === false || value === null) {
+    return [];
+  }
+  if (Array.isArray(value)) {
+    return value
+      .filter((stage): stage is string => typeof stage === 'string' && stage.trim().length > 0)
+      .map((stage) => stage.trim());
+  }
+  if (typeof value === 'string') {
+    return value
+      .split(',')
+      .map((stage) => stage.trim())
+      .filter(Boolean);
+  }
+  if (typeof value === 'object') {
+    return Object.entries(value as Record<string, unknown>)
+      .filter(([, enabled]) => enabled === true || enabled === 'true' || enabled === 1 || enabled === '1')
+      .map(([stage]) => stage.trim())
+      .filter(Boolean);
+  }
+  throw new Error('manual_step_stages must be an array, comma-separated string, stage map, null, or false');
+}
+
+function buildV2StepGenerationFields(
+  input: Record<string, unknown>,
+  options?: V2StepVideoRequestOptions,
+): V2StepGenerationOptions {
+  const optionRecord = (options ?? {}) as Record<string, unknown>;
+  const stepMode = normalizeV2StepGenerationMode(optionRecord.stepMode);
+  const optionAutoRender = normalizeV2StepBoolean(
+    getFirstDefinedInputValue(optionRecord, ['auto_render_full_video', 'autoRenderFullVideo']),
+    'auto_render_full_video',
+  );
+  const inputAutoRender = normalizeV2StepBoolean(
+    getFirstDefinedInputValue(input, ['auto_render_full_video', 'autoRenderFullVideo']),
+    'auto_render_full_video',
+  );
+  const optionManualStages = normalizeV2ManualStepStages(
+    getFirstDefinedInputValue(optionRecord, ['manual_step_stages', 'manualStepStages']),
+  );
+  const inputManualStages = normalizeV2ManualStepStages(
+    getFirstDefinedInputValue(input, ['manual_step_stages', 'manualStepStages']),
+  );
+
+  let autoRenderFullVideo =
+    stepMode ? stepMode === 'one_step' : optionAutoRender ?? inputAutoRender;
+  if (autoRenderFullVideo === undefined) {
+    autoRenderFullVideo = optionManualStages !== undefined || inputManualStages !== undefined
+      ? false
+      : true;
+  }
+
+  const manualStepStages = autoRenderFullVideo
+    ? []
+    : optionManualStages ?? inputManualStages ?? [...DEFAULT_V2_STEP_MANUAL_STAGES];
+
+  return {
+    auto_render_full_video: autoRenderFullVideo,
+    autoRenderFullVideo,
+    manual_step_stages: manualStepStages,
+    manualStepStages: manualStepStages,
+  };
+}
+
 function normalizeCreateVideoFromTextInput(input: CreateVideoFromTextInput): CreateVideoFromTextInput {
   const raw = input as Record<string, unknown>;
   const normalized: Record<string, unknown> = { ...input };
@@ -2230,6 +2355,17 @@ function normalizeCreateVideoFromImageListInput(
     ['add_outro_focus_area', ['add_outro_focus_area', 'addOutroFocusArea']],
     ['outro_focust_area', ['outro_focust_area', 'outro_focus_area', 'outroFocustArea', 'outroFocusArea']],
     ['generate_outro_image', ['generate_outro_image', 'generateOutroImage']],
+    [
+      'express_cta_generation',
+      [
+        'express_cta_generation',
+        'expressCtaGeneration',
+        'auto_generate_cta_text',
+        'autoGenerateCtaText',
+        'generate_cta_texts',
+        'generateCtaTexts',
+      ],
+    ],
     ['cta_url', ['cta_url', 'ctaUrl']],
     ['cta_text_top', ['cta_text_top', 'ctaTextTop']],
     ['cta_text_bottom', ['cta_text_bottom', 'ctaTextBottom']],
@@ -2253,12 +2389,25 @@ function normalizeCreateVideoFromImageListInput(
   assertOptionalBoolean(normalized.add_outro_animation, 'add_outro_animation');
   assertOptionalBoolean(normalized.add_outro_focus_area, 'add_outro_focus_area');
   assertOptionalBoolean(normalized.generate_outro_image, 'generate_outro_image');
+  assertOptionalBoolean(normalized.express_cta_generation, 'express_cta_generation');
   assertOptionalBoolean(normalized.add_footer_animation, 'add_footer_animation');
   assertOptionalBoolean(normalized.limit_single_narrator, 'limit_single_narrator');
   assertOptionalBoolean(normalized.add_narrator_avatar, 'add_narrator_avatar');
 
   if (normalized.add_narrator_avatar === true) {
     normalized.limit_single_narrator = true;
+  }
+
+  if (normalized.express_cta_generation === true) {
+    const ctaUrl = typeof normalized.cta_url === 'string' ? normalized.cta_url.trim() : '';
+    if (!ctaUrl) {
+      throw new Error('cta_url is required when express_cta_generation is true for createVideoFromImageList');
+    }
+    normalized.cta_url = ctaUrl;
+    normalized.generate_outro_image = true;
+    normalized.add_outro_animation = true;
+    normalized.add_outro_focus_area = true;
+    normalized.add_footer_animation = true;
   }
 
   if (normalized.generate_outro_image === true) {
@@ -2949,13 +3098,18 @@ export class SamsarClient {
 
   async createV2StepVideoFromText(
     input: CreateVideoFromTextInput,
-    options?: V2RequestOptions,
+    options?: V2StepVideoRequestOptions,
   ): Promise<SamsarResult<V2StepVideoCreateResponse>> {
     const normalizedInput = normalizeCreateVideoFromTextInput(input);
+    const stepGenerationFields = buildV2StepGenerationFields(normalizedInput as Record<string, unknown>, options);
     return this.postV2<V2StepVideoCreateResponse>(
       'video/step/text_to_video',
       {
-        input: normalizedInput,
+        ...stepGenerationFields,
+        input: {
+          ...normalizedInput,
+          ...stepGenerationFields,
+        },
         webhookUrl: options?.webhookUrl,
       },
       options,
@@ -2964,20 +3118,25 @@ export class SamsarClient {
 
   async createV2StepTextToVideo(
     input: CreateVideoFromTextInput,
-    options?: V2RequestOptions,
+    options?: V2StepVideoRequestOptions,
   ): Promise<SamsarResult<V2StepVideoCreateResponse>> {
     return this.createV2StepVideoFromText(input, options);
   }
 
   async createV2StepVideoFromImage(
     input: CreateV2StepImageToVideoInput,
-    options?: V2RequestOptions,
+    options?: V2StepVideoRequestOptions,
   ): Promise<SamsarResult<V2StepVideoCreateResponse>> {
     const normalizedInput = normalizeCreateV2StepImageToVideoInput(input);
+    const stepGenerationFields = buildV2StepGenerationFields(normalizedInput as Record<string, unknown>, options);
     return this.postV2<V2StepVideoCreateResponse>(
       'video/step/image_to_video',
       {
-        input: normalizedInput,
+        ...stepGenerationFields,
+        input: {
+          ...normalizedInput,
+          ...stepGenerationFields,
+        },
         webhookUrl: options?.webhookUrl,
       },
       options,
@@ -2986,7 +3145,7 @@ export class SamsarClient {
 
   async createV2StepImageToVideo(
     input: CreateV2StepImageToVideoInput,
-    options?: V2RequestOptions,
+    options?: V2StepVideoRequestOptions,
   ): Promise<SamsarResult<V2StepVideoCreateResponse>> {
     return this.createV2StepVideoFromImage(input, options);
   }
