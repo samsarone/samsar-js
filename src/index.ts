@@ -1096,6 +1096,36 @@ export interface EnhanceImageResponse {
   [key: string]: unknown;
 }
 
+export type AssignImageTitleMimeType = 'image/png' | 'image/jpeg' | 'image/webp' | 'image/gif';
+export type AssignImageTitleBinaryInput = Blob | ArrayBuffer | Uint8Array;
+
+export interface AssignImageTitleRequest {
+  image?: string | AssignImageTitleBinaryInput;
+  file?: AssignImageTitleBinaryInput;
+  image_file?: AssignImageTitleBinaryInput;
+  imageFile?: AssignImageTitleBinaryInput;
+  image_url?: string;
+  imageUrl?: string;
+  url?: string;
+  image_data?: string;
+  imageData?: string;
+  image_data_url?: string;
+  imageDataUrl?: string;
+  metadata?: Record<string, unknown> | string;
+  metadata_json?: Record<string, unknown> | string;
+  metadataJson?: Record<string, unknown> | string;
+  fileName?: string;
+  filename?: string;
+  mimeType?: AssignImageTitleMimeType | string;
+  [key: string]: unknown;
+}
+
+export interface AssignImageTitleResponse {
+  content: string;
+  title?: string;
+  [key: string]: unknown;
+}
+
 export interface ExtendImageListRequest {
   image_urls: string[];
   num_images: number;
@@ -3267,6 +3297,39 @@ export class SamsarClient {
     );
   }
 
+  /**
+   * Assign a short SEO-friendly title to an image using the /v2 image route.
+   * Supports image_url/image_data JSON payloads or binary image/FormData uploads.
+   */
+  async assignV2ImageTitle(
+    payload: AssignImageTitleRequest | FormData,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<AssignImageTitleResponse>> {
+    const body = buildAssignImageTitleBody(payload);
+    if (isFormDataBody(body)) {
+      return this.postForm<AssignImageTitleResponse>(
+        this.buildV2Url('image/assign_title'),
+        body,
+        options,
+      );
+    }
+
+    return this.postV2<AssignImageTitleResponse>(
+      'image/assign_title',
+      {
+        input: body,
+      },
+      options,
+    );
+  }
+
+  async assignV2TitleToImage(
+    payload: AssignImageTitleRequest | FormData,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<AssignImageTitleResponse>> {
+    return this.assignV2ImageTitle(payload, options);
+  }
+
   async updateV2VideoOutroImage(
     input: UpdateVideoOutroImageInput,
     options?: V2RequestOptions,
@@ -4659,6 +4722,29 @@ export class SamsarClient {
   }
 
   /**
+   * Assign a short SEO-friendly title to an image.
+   * Supports image_url/image_data JSON payloads or binary image/FormData uploads.
+   */
+  async assignImageTitle(
+    payload: AssignImageTitleRequest | FormData,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<AssignImageTitleResponse>> {
+    const body = buildAssignImageTitleBody(payload);
+    if (isFormDataBody(body)) {
+      return this.postForm<AssignImageTitleResponse>('image/assign_title', body, options);
+    }
+
+    return this.post<AssignImageTitleResponse>('image/assign_title', body, options);
+  }
+
+  async assignTitleToImage(
+    payload: AssignImageTitleRequest | FormData,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<AssignImageTitleResponse>> {
+    return this.assignImageTitle(payload, options);
+  }
+
+  /**
    * Add or extend a saved image list for the authenticated API key.
    */
   async extendImageList(
@@ -5182,6 +5268,18 @@ export class SamsarClient {
     });
   }
 
+  private async postForm<T>(
+    path: string,
+    body: FormData,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<T>> {
+    return this.request<T>(path, {
+      ...(options ?? {}),
+      method: 'POST',
+      body,
+    });
+  }
+
   private async request<T>(
     path: string,
     options: SamsarRequestOptions & { method: string; body?: BodyInit | null },
@@ -5289,7 +5387,7 @@ export class SamsarClient {
         : this.apiKey
           ? `Bearer ${this.apiKey}`
           : undefined,
-      'Content-Type': options.body ? 'application/json' : undefined,
+      'Content-Type': options.body && !isFormDataBody(options.body) ? 'application/json' : undefined,
       'x-external-user-api-key': options.externalUserApiKey ?? this.externalUserApiKey,
       'x-app-secret': resolvedAppKey ? resolvedAppSecret : undefined,
       ...this.defaultHeaders,
@@ -5369,6 +5467,134 @@ export class SamsarClient {
 
 function trimTrailingSlash(url: string): string {
   return url.replace(/\/+$/, '');
+}
+
+function buildAssignImageTitleBody(payload: AssignImageTitleRequest | FormData): Record<string, unknown> | FormData {
+  if (isFormDataBody(payload)) {
+    return payload;
+  }
+
+  const input = (payload ?? {}) as AssignImageTitleRequest;
+  const image =
+    input.image ??
+    input.file ??
+    input.image_file ??
+    input.imageFile;
+
+  if (isBinaryAssignImageTitleInput(image)) {
+    return buildAssignImageTitleFormData(input, image);
+  }
+
+  const stringImage = getTrimmedString(image);
+  const imageData =
+    stringImage?.startsWith('data:image/')
+      ? stringImage
+      : getTrimmedString(input.image_data) ??
+        getTrimmedString(input.imageData) ??
+        getTrimmedString(input.image_data_url) ??
+        getTrimmedString(input.imageDataUrl);
+  const imageUrl =
+    stringImage && !stringImage.startsWith('data:image/')
+      ? stringImage
+      : getTrimmedString(input.image_url) ??
+        getTrimmedString(input.imageUrl) ??
+        getTrimmedString(input.url);
+  const metadata = input.metadata ?? input.metadata_json ?? input.metadataJson;
+
+  if (!imageData && !imageUrl) {
+    throw new Error('image, image_data, or image_url is required for assignImageTitle');
+  }
+
+  return {
+    ...(imageData ? { image_data: imageData } : {}),
+    ...(imageUrl ? { image_url: imageUrl } : {}),
+    ...(metadata !== undefined ? { metadata } : {}),
+  };
+}
+
+function buildAssignImageTitleFormData(
+  input: AssignImageTitleRequest,
+  image: AssignImageTitleBinaryInput,
+): FormData {
+  if (typeof FormData === 'undefined') {
+    throw new Error('FormData is required for binary assignImageTitle uploads');
+  }
+
+  const metadata = input.metadata ?? input.metadata_json ?? input.metadataJson;
+  const mimeType = getTrimmedString(input.mimeType) ?? getBlobType(image);
+  if (!mimeType || !isSupportedAssignImageTitleMimeType(mimeType)) {
+    throw new Error('mimeType must be image/png, image/jpeg, image/webp, or image/gif for binary assignImageTitle uploads');
+  }
+
+  const blob = toAssignImageTitleBlob(image, mimeType);
+  const fileName =
+    getTrimmedString(input.fileName) ??
+    getTrimmedString(input.filename) ??
+    `image.${mimeTypeToExtension(mimeType)}`;
+  const formData = new FormData();
+  formData.append('image', blob, fileName);
+  if (metadata !== undefined) {
+    formData.append('metadata', typeof metadata === 'string' ? metadata : JSON.stringify(metadata));
+  }
+  return formData;
+}
+
+function isBinaryAssignImageTitleInput(value: unknown): value is AssignImageTitleBinaryInput {
+  return (
+    isBlobValue(value) ||
+    value instanceof ArrayBuffer ||
+    value instanceof Uint8Array
+  );
+}
+
+function toAssignImageTitleBlob(value: AssignImageTitleBinaryInput, mimeType: string): Blob {
+  if (isBlobValue(value)) {
+    if (value.type === mimeType) {
+      return value;
+    }
+    return new Blob([value], { type: mimeType });
+  }
+
+  if (value instanceof Uint8Array) {
+    const arrayBuffer = value.buffer.slice(
+      value.byteOffset,
+      value.byteOffset + value.byteLength,
+    ) as ArrayBuffer;
+    return new Blob([arrayBuffer], { type: mimeType });
+  }
+
+  return new Blob([value], { type: mimeType });
+}
+
+function getBlobType(value: unknown): string | undefined {
+  return isBlobValue(value) ? getTrimmedString(value.type) : undefined;
+}
+
+function isBlobValue(value: unknown): value is Blob {
+  return typeof Blob !== 'undefined' && value instanceof Blob;
+}
+
+function isFormDataBody(body: unknown): body is FormData {
+  return typeof FormData !== 'undefined' && body instanceof FormData;
+}
+
+function isSupportedAssignImageTitleMimeType(value: string): boolean {
+  const normalized = value.trim().toLowerCase();
+  return ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/gif'].includes(normalized);
+}
+
+function mimeTypeToExtension(value: string): string {
+  const normalized = value.trim().toLowerCase();
+  if (normalized === 'image/jpeg' || normalized === 'image/jpg') {
+    return 'jpg';
+  }
+  if (normalized === 'image/webp') {
+    return 'webp';
+  }
+  if (normalized === 'image/gif') {
+    return 'gif';
+  }
+  return 'png';
 }
 
 function parseMaybeJson(value: string): unknown {

@@ -346,6 +346,24 @@ const images = await samsar.extendImageList({
   aspect_ratio: '16:9',
 });
 
+// Assign a short SEO-friendly image title
+const imageTitle = await samsar.assignImageTitle({
+  image_url: 'https://example.com/product-photo.png',
+  metadata: {
+    product: 'linen travel shirt',
+    collection: 'spring essentials',
+  },
+});
+console.log(imageTitle.data.content); // "Linen Travel Shirt"
+
+// Binary uploads are also supported in browser/Node 18+ runtimes
+const fileTitle = await samsar.assignImageTitle({
+  image: fileOrBlob,
+  fileName: 'product-photo.png',
+  mimeType: 'image/png',
+  metadata: { product: 'linen travel shirt' },
+});
+
 // Create a reusable receipt template from one sample receipt image (free endpoint)
 const receiptTemplate = await samsar.createReceiptTemplate({
   image_url: 'https://example.com/receipt-template.png',
@@ -579,7 +597,7 @@ Video model support notes:
 
 Upcoming `/v2` omni route adapters:
 - `/v2` is additive; `/v1` is not deprecated.
-- `createV2VideoFromText`, `createV2VideoFromImageList`, `translateV2Video`, `cloneV2Video`, `regenerateV2VideoAvatar`, `updateV2VideoOutroImage`, `updateV2VideoFooterImage`, `addV2VideoOutroImage`, `getV2Status`, `getV2StatusDetailed`, `getV2Credits`, `listV2Requests`, and `createV2Session` call the new omni route surface.
+- `createV2VideoFromText`, `createV2VideoFromImageList`, `assignV2ImageTitle`, `translateV2Video`, `cloneV2Video`, `regenerateV2VideoAvatar`, `updateV2VideoOutroImage`, `updateV2VideoFooterImage`, `addV2VideoOutroImage`, `getV2Status`, `getV2StatusDetailed`, `getV2Credits`, `listV2Requests`, and `createV2Session` call the new omni route surface.
 - Step-controlled video helpers include `createV2StepVideoFromText`, `createV2StepTextToVideo`, `createV2StepVideoFromImage`, `createV2StepImageToVideo`, `getV2StepVideoStatus`, `getV2StepVideoStatusDetailed`, and `processNextV2StepVideo`. They default to 1-step express rendering by sending `auto_render_full_video: true` and `manual_step_stages: []`; pass `{ stepMode: 'two_step' }` or `manual_step_stages: ['ai_video_generation']` to require an explicit second-step approval before image-to-video generation.
 - Programmatic user helpers include `createV2ExternalUser`, `createV2UserRechargeCredits`, `refreshV2UserToken`, `createV2UserAppKey`, `refreshV2UserAppKey`, `getV2UserCredits`, `getV2UserUsageLogs`, and `getV2UserPaymentStatus`.
 - Omit `externalUser` for internal account billing, pass `externalUser` to scope an external user with the account API key, or authenticate the client directly with an external-user auth token/API key. V2 external users can be referenced by `unique_key`; if `unique_key` is omitted during creation, the server uses `external_user_id` as the key.
@@ -600,6 +618,12 @@ const v2ExternalVideo = await platform.createV2VideoFromImageList(
   },
   { externalUser },
 );
+
+const v2ImageTitle = await platform.assignV2ImageTitle({
+  image_url: 'https://cdn.example.com/product-frame.png',
+  metadata: { product: 'travel shirt', channel: 'marketplace' },
+});
+console.log(v2ImageTitle.data.content);
 
 const v2Translated = await platform.translateV2Video({
   videoSessionId: v2Video.data.request_id!,
