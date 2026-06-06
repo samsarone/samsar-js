@@ -56,6 +56,60 @@ export interface FontOptions {
   family?: string;
 }
 
+export type BackingTrackModel =
+  | 'LYRIA3'
+  | 'LYRIA2'
+  | 'ELEVENLABS_MUSIC'
+  | 'Lyria 3'
+  | 'Lyria 2'
+  | 'ElevenLabs music'
+  | string;
+
+export type TTSModel =
+  | 'ELEVENLABS'
+  | 'OPENAI'
+  | 'GOOGLE'
+  | 'ElevenLabs'
+  | 'OpenAI'
+  | 'Google TTS'
+  | string;
+
+export type InferenceModel =
+  | 'gpt-5.5'
+  | 'GPT 5.5'
+  | 'gemini-3.1-pro'
+  | 'Gemini 3.1 Pro'
+  | string;
+
+export interface GoogleTTSSpeakerDetail {
+  provider?: 'GOOGLE' | string;
+  value?: string;
+  voiceId?: string;
+  name?: string;
+  label?: string;
+  languageCode?: string;
+  languageCodes?: string[];
+  Gender?: 'M' | 'F' | '' | string | null;
+  gender?: string;
+  genderCode?: string;
+  ssmlGender?: string;
+  naturalSampleRateHertz?: number | null;
+  voiceType?: string;
+  previewRequiresAuth?: boolean;
+  [key: string]: unknown;
+}
+
+export interface TTSSpeakerOptions {
+  allowOpenAI?: boolean;
+  allowElevenLabs?: boolean;
+  allowGoogle?: boolean;
+  openAISpeakers?: string[];
+  elevenLabsSpeakers?: string[];
+  googleSpeakers?: string[];
+  googleSpeakerDetails?: GoogleTTSSpeakerDetail[];
+  [key: string]: unknown;
+}
+
 export type V2StepGenerationMode = 'one_step' | 'two_step';
 
 export interface V2StepGenerationOptions {
@@ -72,7 +126,19 @@ export interface CreateVideoFromTextInput extends V2StepGenerationOptions {
   duration: number;
   tone?: string;
   aspect_ratio?: string;
-  video_model_sub_type?: string;
+  backingtrack_model?: BackingTrackModel;
+  backing_track_model?: BackingTrackModel;
+  backingTrackModel?: BackingTrackModel;
+  music_provider?: BackingTrackModel;
+  musicProvider?: BackingTrackModel;
+  tts_model?: TTSModel;
+  ttsModel?: TTSModel;
+  tts_provider?: TTSModel;
+  ttsProvider?: TTSModel;
+  inference_model?: InferenceModel;
+  inferenceModel?: InferenceModel;
+  speakerOptions?: TTSSpeakerOptions;
+  speaker_options?: TTSSpeakerOptions;
   font_key?: string;
   fontKey?: string;
   subtitle_font?: string;
@@ -149,6 +215,7 @@ export type ImageListToVideoModel =
   | 'RUNWAYML'
   | 'VEO3.1I2V'
   | 'VEO3.1I2VFAST'
+  | 'COSMOS3SUPERI2V'
   | 'SEEDANCEI2V'
   | 'KLINGIMGTOVID3PRO'
   | 'HAPPYHORSEI2V';
@@ -190,6 +257,19 @@ export interface CreateVideoFromImageListInput extends V2StepGenerationOptions {
   aspectRatio?: ImageListToVideoAspectRatio;
   language?: string;
   languageString?: string | null;
+  backingtrack_model?: BackingTrackModel;
+  backing_track_model?: BackingTrackModel;
+  backingTrackModel?: BackingTrackModel;
+  music_provider?: BackingTrackModel;
+  musicProvider?: BackingTrackModel;
+  tts_model?: TTSModel;
+  ttsModel?: TTSModel;
+  tts_provider?: TTSModel;
+  ttsProvider?: TTSModel;
+  inference_model?: InferenceModel;
+  inferenceModel?: InferenceModel;
+  speakerOptions?: TTSSpeakerOptions;
+  speaker_options?: TTSSpeakerOptions;
   font_key?: string;
   fontKey?: string;
   subtitle_font?: string;
@@ -1050,24 +1130,6 @@ export interface RemoveBrandingFromImageResponse {
   global_status_id?: string;
   case_type?: string;
   image_url: string;
-  userId?: string;
-  creditsCharged?: number;
-  remainingCredits?: number;
-  [key: string]: unknown;
-}
-
-export interface ReplaceBrandingFromImageRequest {
-  image_urls: string[];
-}
-
-export interface ReplaceBrandingFromImageResponse {
-  status?: string;
-  message?: string;
-  request_id?: string;
-  session_id?: string;
-  global_status_id?: string;
-  case_type?: string;
-  image_urls: string[];
   userId?: string;
   creditsCharged?: number;
   remainingCredits?: number;
@@ -2084,6 +2146,20 @@ export interface CreditsRechargeResponse {
   [key: string]: unknown;
 }
 
+export interface V2CreditsRechargeRequest {
+  credits?: number;
+  credits_to_recharge?: number;
+  creditsToRecharge?: number;
+  [key: string]: unknown;
+}
+
+export interface V2CreditsGrantRequest {
+  credits?: number;
+  credits_to_grant?: number;
+  creditsToGrant?: number;
+  [key: string]: unknown;
+}
+
 export interface EnableAutoRechargeRequest {
   thresholdCredits?: number;
   amountUsd?: number;
@@ -2339,6 +2415,10 @@ function normalizeCreateVideoFromTextInput(input: CreateVideoFromTextInput): Cre
     ['cta_logo', ['cta_logo', 'ctaLogo']],
     ['add_footer_animation', ['add_footer_animation', 'addFooterAnimation']],
     ['footer_metadata', ['footer_metadata', 'footerMetadata']],
+    ['backingtrack_model', ['backingtrack_model', 'backing_track_model', 'backingTrackModel', 'music_provider', 'musicProvider']],
+    ['tts_model', ['tts_model', 'ttsModel', 'tts_provider', 'ttsProvider']],
+    ['inference_model', ['inference_model', 'inferenceModel']],
+    ['speakerOptions', ['speakerOptions', 'speaker_options']],
     ['enable_subtitles', ['enable_subtitles', 'enableSubtitles']],
     ['font_key', ['font_key', 'fontKey']],
   ];
@@ -2349,6 +2429,9 @@ function normalizeCreateVideoFromTextInput(input: CreateVideoFromTextInput): Cre
       normalized[canonicalName] = value;
     }
   }
+
+  delete normalized.video_model_sub_type;
+  delete normalized.videoModelSubType;
 
   assertOptionalBoolean(normalized.enable_subtitles, 'enable_subtitles', 'createVideoFromText');
   assertOptionalBoolean(normalized.add_outro_animation, 'add_outro_animation', 'createVideoFromText');
@@ -2402,6 +2485,10 @@ function normalizeCreateVideoFromImageListInput(
     ['cta_logo', ['cta_logo', 'ctaLogo']],
     ['add_footer_animation', ['add_footer_animation', 'addFooterAnimation']],
     ['footer_metadata', ['footer_metadata', 'footerMetadata']],
+    ['backingtrack_model', ['backingtrack_model', 'backing_track_model', 'backingTrackModel', 'music_provider', 'musicProvider']],
+    ['tts_model', ['tts_model', 'ttsModel', 'tts_provider', 'ttsProvider']],
+    ['inference_model', ['inference_model', 'inferenceModel']],
+    ['speakerOptions', ['speakerOptions', 'speaker_options']],
     ['limit_single_narrator', ['limit_single_narrator', 'limitSingleNarrator']],
     ['add_narrator_avatar', ['add_narrator_avatar', 'addNarratorAvatar']],
     ['enable_subtitles', ['enable_subtitles', 'enableSubtitles']],
@@ -2414,6 +2501,9 @@ function normalizeCreateVideoFromImageListInput(
       normalized[canonicalName] = value;
     }
   }
+
+  delete normalized.video_model_sub_type;
+  delete normalized.videoModelSubType;
 
   assertOptionalBoolean(normalized.enable_subtitles, 'enable_subtitles');
   assertOptionalBoolean(normalized.add_outro_animation, 'add_outro_animation');
@@ -2882,6 +2972,50 @@ export class SamsarClient {
     return this.getV2<CreditsBalanceResponse | ExternalCreditsBalanceResponse>('credits', options);
   }
 
+  async createV2CreditsRecharge(
+    payload: number | V2CreditsRechargeRequest,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<CreditsRechargeResponse | ExternalCreditsRechargeResponse>> {
+    const input: V2CreditsRechargeRequest = typeof payload === 'number' ? { credits: payload } : (payload ?? {});
+    const credits = Number(input.credits ?? input.credits_to_recharge ?? input.creditsToRecharge);
+    if (!Number.isFinite(credits) || credits <= 0 || !Number.isInteger(credits)) {
+      throw new Error('credits must be a positive integer');
+    }
+
+    return this.postV2<CreditsRechargeResponse | ExternalCreditsRechargeResponse>(
+      'credits/recharge',
+      {
+        input: {
+          ...input,
+          credits,
+        },
+      },
+      options,
+    );
+  }
+
+  async grantV2Credits(
+    payload: number | V2CreditsGrantRequest,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<ExternalCreditsGrantResponse>> {
+    const input: V2CreditsGrantRequest = typeof payload === 'number' ? { credits: payload } : (payload ?? {});
+    const credits = Number(input.credits ?? input.credits_to_grant ?? input.creditsToGrant);
+    if (!Number.isFinite(credits) || credits <= 0 || !Number.isInteger(credits)) {
+      throw new Error('credits must be a positive integer');
+    }
+
+    return this.postV2<ExternalCreditsGrantResponse>(
+      'credits/grant',
+      {
+        input: {
+          ...input,
+          credits,
+        },
+      },
+      options,
+    );
+  }
+
   async getV2UserCredits(options?: V2RequestOptions): Promise<SamsarResult<CreditsBalanceResponse>> {
     return this.getV2<CreditsBalanceResponse>('user/credits', options);
   }
@@ -3080,6 +3214,29 @@ export class SamsarClient {
     }
 
     return this.getV2<PaymentStatusResponse>('user/payment_status', {
+      ...(options ?? {}),
+      query,
+    });
+  }
+
+  async getV2PaymentStatus(
+    payload: PaymentStatusRequest,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<PaymentStatusResponse | ExternalPaymentStatusResponse>> {
+    const query: QueryParams = {
+      ...(options?.query ?? {}),
+    };
+    if (payload?.checkoutSessionId) {
+      query.checkoutSessionId = payload.checkoutSessionId;
+    }
+    if (payload?.paymentIntentId) {
+      query.paymentIntentId = payload.paymentIntentId;
+    }
+    if (payload?.setupIntentId) {
+      query.setupIntentId = payload.setupIntentId;
+    }
+
+    return this.getV2<PaymentStatusResponse | ExternalPaymentStatusResponse>('payment_status', {
       ...(options ?? {}),
       query,
     });
@@ -3374,6 +3531,32 @@ export class SamsarClient {
     );
   }
 
+  async joinV2Videos(
+    input: JoinVideosInput,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<JoinVideosResponse | ExternalRequestResponse>> {
+    const rawIds = input.session_ids ?? input.sessionIds ?? input.video_session_ids ?? input.videoSessionIds;
+    const sessionIds = Array.isArray(rawIds)
+      ? rawIds.map((value) => (typeof value === 'string' ? value.trim() : '')).filter(Boolean)
+      : [];
+
+    if (sessionIds.length < 2) {
+      throw new Error('at least two session IDs are required for joinV2Videos');
+    }
+
+    return this.postV2<JoinVideosResponse | ExternalRequestResponse>(
+      'join_videos',
+      {
+        input: {
+          ...input,
+          session_ids: sessionIds,
+        },
+        webhookUrl: options?.webhookUrl,
+      },
+      options,
+    );
+  }
+
   async getV2Status(
     requestId: string,
     options?: V2RequestOptions & { queryParams?: QueryParams },
@@ -3415,6 +3598,64 @@ export class SamsarClient {
     options?: V2RequestOptions & { queryParams?: QueryParams },
   ): Promise<SamsarResult<GlobalStatusDetailedResponse | ExternalStatusDetailedResponse>> {
     return this.getV2StatusDetailed(requestId, options);
+  }
+
+  /**
+   * Cancel an in-progress v2 render for an existing video session.
+   */
+  async cancelV2Render(
+    input: CancelRenderInput,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<CancelRenderResponse>> {
+    const raw = input as Record<string, unknown>;
+    const videoSessionId =
+      (raw.videoSessionId as string | undefined) ??
+      (raw.video_session_id as string | undefined) ??
+      (raw.videoSessionID as string | undefined) ??
+      (raw.session_id as string | undefined) ??
+      (raw.sessionId as string | undefined) ??
+      (raw.sessionID as string | undefined) ??
+      (raw.request_id as string | undefined) ??
+      (raw.requestId as string | undefined);
+
+    if (!videoSessionId) {
+      throw new Error('videoSessionId is required for cancelV2Render');
+    }
+
+    const response = await this.postV2<CancelRenderResponse>(
+      'cancel_render',
+      {
+        input: {
+          ...input,
+          videoSessionId: String(videoSessionId),
+        },
+      },
+      options,
+    );
+
+    const data = response.data as Record<string, unknown> | null;
+    if (data && typeof data === 'object') {
+      const sessionId =
+        typeof (data as any).sessionID === 'string'
+          ? (data as any).sessionID
+          : typeof (data as any).session_id === 'string'
+            ? (data as any).session_id
+            : typeof (data as any).request_id === 'string'
+              ? (data as any).request_id
+              : undefined;
+      const normalizedSessionId = sessionId ? String(sessionId) : undefined;
+
+      const normalizedData: CancelRenderResponse = {
+        ...(data as CancelRenderResponse),
+        sessionID: (data as CancelRenderResponse).sessionID ?? normalizedSessionId ?? '',
+        session_id: (data as CancelRenderResponse).session_id ?? normalizedSessionId,
+        request_id: (data as CancelRenderResponse).request_id ?? normalizedSessionId,
+      };
+
+      return { ...response, data: normalizedData };
+    }
+
+    return response;
   }
 
   /**
@@ -4692,23 +4933,13 @@ export class SamsarClient {
   }
 
   /**
-   * Remove branding/watermark from an image by URL.
+   * Remove visible text from an image by URL.
    */
   async removeBrandingFromImage(
     payload: RemoveBrandingFromImageRequest,
     options?: SamsarRequestOptions,
   ): Promise<SamsarResult<RemoveBrandingFromImageResponse>> {
     return this.post<RemoveBrandingFromImageResponse>('image/remove_branding', payload, options);
-  }
-
-  /**
-   * Replace branding/watermark on an image by providing the original and replacement image URLs.
-   */
-  async replaceBrandingFromImage(
-    payload: ReplaceBrandingFromImageRequest,
-    options?: SamsarRequestOptions,
-  ): Promise<SamsarResult<ReplaceBrandingFromImageResponse>> {
-    return this.post<ReplaceBrandingFromImageResponse>('image/replace_branding', payload, options);
   }
 
   /**

@@ -37,6 +37,10 @@ const video = await samsar.createVideoFromText(
     image_model: 'GPTIMAGE2',
     video_model: 'RUNWAYML',
     duration: 30,
+    backingtrack_model: 'LYRIA3',
+    tts_model: 'OPENAI',
+    speakerOptions: { openAISpeakers: ['nova'] },
+    inference_model: 'gpt-5.5',
     font_key: 'Poppins',
     enable_subtitles: true,
   },
@@ -67,6 +71,10 @@ const videoFromImages = await samsar.createVideoFromImageList(
     video_model: 'RUNWAYML',
     aspect_ratio: '16:9',
     language: 'en',
+    backingtrack_model: 'ELEVENLABS_MUSIC',
+    tts_model: 'ELEVENLABS',
+    speakerOptions: { elevenLabsSpeakers: ['EXAVITQu4vr4xnSDxMaL'] },
+    inference_model: 'gemini-3.1-pro',
     font_key: 'Poppins',
     enable_subtitles: true,
   },
@@ -330,13 +338,8 @@ await samsar.deleteEmbedding({
   source_id: '2',
 });
 
-// Remove branding/watermark
+// Remove visible text
 const cleaned = await samsar.removeBrandingFromImage({ image_url: 'https://example.com/photo.png' });
-
-// Replace branding/watermark (original image, replacement logo/image)
-const replaced = await samsar.replaceBrandingFromImage({
-  image_urls: ['https://example.com/photo.png', 'https://example.com/new-logo.png'],
-});
 
 // Extend image set
 const images = await samsar.extendImageList({
@@ -578,10 +581,12 @@ console.log(externalLibrary.data.requests.map((request) => request.request_id));
 ```
 
 Video model support notes:
-- `createVideoFromText` image model keys include: `GPTIMAGE2`, `IMAGEN4`, `SEEDREAM`, `NANOBANANA2`, `CUSTOM_TEXT_TO_IMAGE`.
-- `createVideoFromText` supports these video models: `RUNWAYML`, `VEO3.1I2V`, `VEO3.1I2VFAST`, `SEEDANCEI2V` (Seedance 1.5), `KLINGIMGTOVID3PRO`, and `HAPPYHORSEI2V`.
+- `createVideoFromText` image model keys include: `GPTIMAGE2`, `IMAGEN4`, `SEEDREAM`, `NANOBANANA2`, `NANOBANANAPRO`, `CUSTOM_TEXT_TO_IMAGE`.
+- `createVideoFromText` supports these video models: `RUNWAYML`, `VEO3.1I2V`, `VEO3.1I2VFAST`, `COSMOS3SUPERI2V`, `SEEDANCEI2V` (Seedance 1.5), `KLINGIMGTOVID3PRO`, and `HAPPYHORSEI2V`.
 - `createVideoFromText` accepts either a provided outro (`outro_image_url`) or server-generated QR outro (`generate_outro_image: true` with `cta_url`). It can also render bottom CTA footer QR cards with `add_footer_animation` and `footer_metadata`; one footer item applies to every generated scene, while multiple items map by scene index.
-- `createVideoFromImageList` supports `RUNWAYML`, `VEO3.1I2V`, `VEO3.1I2VFAST`, `SEEDANCEI2V`, `KLINGIMGTOVID3PRO`, and `HAPPYHORSEI2V` via `video_model`; if omitted, it defaults to `RUNWAYML`. Use `aspect_ratio: '16:9'` or `'9:16'`; omitted or invalid values fall back to `16:9`.
+- `createVideoFromImageList` supports `RUNWAYML`, `VEO3.1I2V`, `VEO3.1I2VFAST`, `COSMOS3SUPERI2V`, `SEEDANCEI2V`, `KLINGIMGTOVID3PRO`, and `HAPPYHORSEI2V` via `video_model`; if omitted, it defaults to `RUNWAYML`. It also accepts the same `image_model` keys as text-to-video. Use `aspect_ratio: '16:9'` or `'9:16'`; omitted or invalid values fall back to `16:9`.
+- Text and image-list video creation both accept optional `backingtrack_model` / `backing_track_model` / `backingTrackModel` / `music_provider` / `musicProvider`, `tts_model` / `ttsModel` / `tts_provider` / `ttsProvider`, `speakerOptions` / `speaker_options`, and `inference_model` / `inferenceModel`. The adapter normalizes these to `backingtrack_model`, `tts_model`, `speakerOptions`, and `inference_model` in the request payload. Omit `inference_model` to use the account default; supported request values are `gpt-5.5` and `gemini-3.1-pro`. When `tts_model` is set, Samsar limits assignment to the matching speaker list (`openAISpeakers`, `elevenLabsSpeakers`, or `googleSpeakers`; Google TTS requests should include `googleSpeakerDetails`).
+- `video_model_sub_type` is no longer used by the API and is stripped from text and image-list payloads before sending.
 - `createVideoFromImageList` accepts either a provided outro (`outro_image_url`) or server-generated QR outro (`generate_outro_image: true` with `cta_url`). Do not combine the two modes in a single request.
 - `createVideoFromImageList` can render per-scene footer QR cards by setting `add_footer_animation: true` and providing one `footer_metadata` item per image scene.
 - `createVideoFromImageList` can also generate QR outro CTA text and each scene footer CTA from a single link by setting `express_cta_generation: true` with `cta_url`. CamelCase `expressCtaGeneration` and compatibility aliases `auto_generate_cta_text` / `generate_cta_texts` are normalized to the same API field.
