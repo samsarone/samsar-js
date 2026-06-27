@@ -37,6 +37,10 @@ const video = await samsar.createVideoFromText(
     image_model: 'GPTIMAGE2',
     video_model: 'RUNWAYML',
     duration: 30,
+    backingtrack_model: 'LYRIA3',
+    tts_model: 'OPENAI',
+    speakerOptions: { openAISpeakers: ['nova'] },
+    inference_model: 'gpt-5.5',
     font_key: 'Poppins',
     enable_subtitles: true,
   },
@@ -67,6 +71,10 @@ const videoFromImages = await samsar.createVideoFromImageList(
     video_model: 'RUNWAYML',
     aspect_ratio: '16:9',
     language: 'en',
+    backingtrack_model: 'ELEVENLABS_MUSIC',
+    tts_model: 'ELEVENLABS',
+    speakerOptions: { elevenLabsSpeakers: ['EXAVITQu4vr4xnSDxMaL'] },
+    inference_model: 'gemini-3.1-pro',
     font_key: 'Poppins',
     enable_subtitles: true,
   },
@@ -107,6 +115,20 @@ await samsar.createVideoFromImageList({
   ],
 });
 
+// Create a video and generate the outro with a center logo/CTA image instead of a QR code
+await samsar.createVideoFromImageList({
+  image_urls: ['https://example.com/a.jpg', 'https://example.com/b.jpg'],
+  prompt: 'Product launch teaser with a branded CTA outro',
+  video_model: 'RUNWAYML',
+  aspect_ratio: '9:16',
+  generate_outro_image: true,
+  outro_cta_image: {
+    top_text: 'Shop the drop',
+    middle_image: { url: 'https://cdn.example.com/drop-logo.png' },
+    bottom_text: 'Limited availability',
+  },
+});
+
 // Create the same generated QR outro and per-scene footer CTAs from one CTA link
 await samsar.createVideoFromImageList({
   image_urls: [
@@ -142,6 +164,20 @@ await samsar.updateVideoOutroImage(
     cta_text_top: 'Scan to book',
     cta_text_bottom: 'Limited availability',
     add_outro_animation: true,
+  },
+  { webhookUrl: 'https://example.com/webhook' },
+);
+
+// Update an existing outro by generating a new CTA outro with a center logo/CTA image
+await samsar.updateVideoOutroImage(
+  {
+    videoSessionId: videoFromImages.data.session_id ?? videoFromImages.data.request_id!,
+    generate_outro_image: true,
+    outro_cta_image: {
+      top_text: 'Shop the drop',
+      middle_image: { url: 'https://cdn.example.com/drop-logo.png' },
+      bottom_text: 'Limited availability',
+    },
   },
   { webhookUrl: 'https://example.com/webhook' },
 );
@@ -330,13 +366,8 @@ await samsar.deleteEmbedding({
   source_id: '2',
 });
 
-// Remove branding/watermark
+// Remove visible text
 const cleaned = await samsar.removeBrandingFromImage({ image_url: 'https://example.com/photo.png' });
-
-// Replace branding/watermark (original image, replacement logo/image)
-const replaced = await samsar.replaceBrandingFromImage({
-  image_urls: ['https://example.com/photo.png', 'https://example.com/new-logo.png'],
-});
 
 // Extend image set
 const images = await samsar.extendImageList({
@@ -494,13 +525,15 @@ const externalRender = await platform.createExternalVideoFromText(externalUser, 
   enable_subtitles: true,
 });
 
-// Update an external user's existing outro by generating a new QR CTA outro
+// Update an external user's existing outro by generating a center logo/CTA image outro
 const externalOutroUpdate = await platform.updateExternalVideoOutroImage(externalUser, {
   request_id: externalRender.data.request_id,
   generate_outro_image: true,
-  cta_url: 'https://example.com/shop',
-  cta_text_top: 'Scan to shop',
-  cta_text_bottom: 'Limited drop',
+  outro_cta_image: {
+    top_text: 'Shop the drop',
+    middle_image: { url: 'https://cdn.example.com/drop-logo.png' },
+    bottom_text: 'Limited availability',
+  },
   add_outro_animation: true,
 });
 console.log(externalOutroUpdate.data.request_id);
@@ -578,15 +611,18 @@ console.log(externalLibrary.data.requests.map((request) => request.request_id));
 ```
 
 Video model support notes:
-- `createVideoFromText` image model keys include: `GPTIMAGE2`, `IMAGEN4`, `SEEDREAM`, `NANOBANANA2`, `CUSTOM_TEXT_TO_IMAGE`.
-- `createVideoFromText` supports these video models: `RUNWAYML`, `VEO3.1I2V`, `VEO3.1I2VFAST`, `SEEDANCEI2V` (Seedance 1.5), `KLINGIMGTOVID3PRO`, and `HAPPYHORSEI2V`.
-- `createVideoFromText` accepts either a provided outro (`outro_image_url`) or server-generated QR outro (`generate_outro_image: true` with `cta_url`). It can also render bottom CTA footer QR cards with `add_footer_animation` and `footer_metadata`; one footer item applies to every generated scene, while multiple items map by scene index.
-- `createVideoFromImageList` supports `RUNWAYML`, `VEO3.1I2V`, `VEO3.1I2VFAST`, `SEEDANCEI2V`, `KLINGIMGTOVID3PRO`, and `HAPPYHORSEI2V` via `video_model`; if omitted, it defaults to `RUNWAYML`. Use `aspect_ratio: '16:9'` or `'9:16'`; omitted or invalid values fall back to `16:9`.
-- `createVideoFromImageList` accepts either a provided outro (`outro_image_url`) or server-generated QR outro (`generate_outro_image: true` with `cta_url`). Do not combine the two modes in a single request.
+- `createVideoFromText` image model keys include: `GPTIMAGE2`, `IMAGEN4`, `SEEDREAM`, `NANOBANANA2`, `NANOBANANAPRO`, `CUSTOM_TEXT_TO_IMAGE`.
+- `createVideoFromText` supports these video models: `RUNWAYML`, `VEO3.1I2V`, `VEO3.1I2VFAST`, `COSMOS3SUPERI2V`, `SEEDANCEI2V` (Seedance 1.5), `KLINGIMGTOVID3PRO`, and `HAPPYHORSEI2V`.
+- `createVideoFromText` accepts either a provided outro (`outro_image_url`) or a server-generated CTA outro (`generate_outro_image: true` with `cta_url` for a QR center image, or `outro_cta_image` for a supplied center logo/CTA image). It can also render bottom CTA footer QR cards with `add_footer_animation` and `footer_metadata`; one footer item applies to every generated scene, while multiple items map by scene index.
+- `createVideoFromImageList` supports `RUNWAYML`, `VEO3.1I2V`, `VEO3.1I2VFAST`, `COSMOS3SUPERI2V`, `SEEDANCEI2V`, `KLINGIMGTOVID3PRO`, and `HAPPYHORSEI2V` via `video_model`; if omitted, it defaults to `RUNWAYML`. It also accepts the same `image_model` keys as text-to-video. Use `aspect_ratio: '16:9'` or `'9:16'`; omitted or invalid values fall back to `16:9`.
+- Text and image-list video creation both accept optional `backingtrack_model` / `backing_track_model` / `backingTrackModel` / `music_provider` / `musicProvider`, `tts_model` / `ttsModel` / `tts_provider` / `ttsProvider`, `speakerOptions` / `speaker_options`, and `inference_model` / `inferenceModel`. The adapter normalizes these to `backingtrack_model`, `tts_model`, `speakerOptions`, and `inference_model` in the request payload. Omit `inference_model` to use the account default; supported request values are `gpt-5.5` and `gemini-3.1-pro`. When `tts_model` is set, Samsar limits assignment to the matching speaker list (`openAISpeakers`, `elevenLabsSpeakers`, or `googleSpeakers`; Google TTS requests should include `googleSpeakerDetails`).
+- `video_model_sub_type` is no longer used by the API and is stripped from text and image-list payloads before sending.
+- `createVideoFromImageList` accepts either a provided outro (`outro_image_url`) or a server-generated CTA outro (`generate_outro_image: true` with `cta_url` for a QR center image, or `outro_cta_image` for a supplied center logo/CTA image). Do not combine the two modes in a single request.
+- `outro_cta_image` uses the structured shape `{ top_text, middle_image, bottom_text }`. `middle_image` accepts a public image URL (`{ url }`, `{ image_url }`) or image data (`{ data_url }`, `{ image_data, mime_type }`) and is resized into the same center area used by QR outros without changing aspect ratio.
 - `createVideoFromImageList` can render per-scene footer QR cards by setting `add_footer_animation: true` and providing one `footer_metadata` item per image scene.
 - `createVideoFromImageList` can also generate QR outro CTA text and each scene footer CTA from a single link by setting `express_cta_generation: true` with `cta_url`. CamelCase `expressCtaGeneration` and compatibility aliases `auto_generate_cta_text` / `generate_cta_texts` are normalized to the same API field.
 - `createVideoFromImageList` accepts `limit_single_narrator: true` to keep all narration under one narrator identity. `add_narrator_avatar: true` automatically enables `limit_single_narrator`, generates an influencer-style human narrator avatar, and overlays it bottom-center or centered in the footer row when footer metadata is present.
-- `updateVideoOutroImage` accepts either a replacement outro image URL (`outro_image_url`, `outroImageUrl`, `new_outro_image_url`) or a generated QR CTA outro (`generate_outro_image: true` with `cta_url`, or just `cta_url` when no outro image URL is supplied). Generated outro updates reuse the existing session image layers for tiling and only queue frame/video regeneration.
+- `updateVideoOutroImage` accepts either a replacement outro image URL (`outro_image_url`, `outroImageUrl`, `new_outro_image_url`) or a generated CTA outro (`generate_outro_image: true` with `cta_url` or `outro_cta_image`, or just `cta_url` / `outro_cta_image` when no outro image URL is supplied). Generated outro updates reuse the existing session image layers for tiling and only queue frame/video regeneration.
 - `updateVideoFooterImage` updates the footer CTA on a cloned session with `cta_text`, `cta_logo`, and/or `cta_url`, or removes all scene footers with `remove_footer: true`. Footer updates queue only frame/video regeneration.
 - `cloneVideo` creates a deep copy of a completed session and queues only the final video render so the clone receives a new rendered video path and URL. It does not charge credits.
 - Main video methods and external-user methods accept the same generated outro and footer parameters. The API can resolve either internal session ids or external `extreq_...` ids on repeated video routes, so client code can keep using `translateVideo`, `joinVideos`, `addSubtitles`, `removeSubtitles`, `addVideoOutroImage`, `updateVideoOutroImage`, and `updateVideoFooterImage`; the explicit external variants are available when you want to call `/external_users/*` directly. Do not strip the `extreq_` prefix.

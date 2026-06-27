@@ -121,17 +121,35 @@ fi
 
 if [[ "${already_published}" != "true" ]]; then
   TOKEN="${NPM_TOKEN:-${NODE_AUTH_TOKEN:-}}"
-  if [[ -z "${TOKEN}" ]]; then
-    echo "NPM_TOKEN (or NODE_AUTH_TOKEN) is required in env/.env" >&2
-    exit 1
-  fi
 
   TMP_NPMRC="$(mktemp)"
   TMP_FILES+=("$TMP_NPMRC")
 
-  printf "%s:_authToken=%s\nregistry=%s\nalways-auth=true\n" "$REGISTRY_AUTH_PREFIX" "$TOKEN" "$REGISTRY" > "$TMP_NPMRC"
+  printf "registry=%s\nalways-auth=true\n" "$REGISTRY" > "$TMP_NPMRC"
+  if [[ -n "${TOKEN}" ]]; then
+    printf "%s:_authToken=%s\n" "$REGISTRY_AUTH_PREFIX" "$TOKEN" >> "$TMP_NPMRC"
+  fi
 
-  NPM_CONFIG_USERCONFIG="$TMP_NPMRC" npm whoami --registry="${REGISTRY}" >/dev/null
+  if ! NPM_CONFIG_USERCONFIG="$TMP_NPMRC" npm whoami --registry="${REGISTRY}" >/dev/null 2>&1; then
+    if [[ -n "${TOKEN}" ]]; then
+      echo "Configured NPM_TOKEN/NODE_AUTH_TOKEN was rejected by ${REGISTRY}; starting npm web login..."
+    else
+      echo "No NPM_TOKEN or NODE_AUTH_TOKEN configured; starting npm web login..."
+    fi
+
+    if [[ "${EUID}" -eq 0 ]]; then
+      echo "Warning: deploy.sh is running with sudo. Prefer running without sudo so npm auth is tied to your normal user." >&2
+    fi
+
+    printf "registry=%s\nalways-auth=true\n" "$REGISTRY" > "$TMP_NPMRC"
+    NPM_CONFIG_USERCONFIG="$TMP_NPMRC" npm login --registry="${REGISTRY}" --auth-type=web
+  fi
+
+  if ! NPM_CONFIG_USERCONFIG="$TMP_NPMRC" npm whoami --registry="${REGISTRY}" >/dev/null 2>&1; then
+    echo "npm authentication failed for ${REGISTRY}; cannot publish ${PACKAGE_NAME}@${PACKAGE_VERSION}." >&2
+    exit 1
+  fi
+
   if [[ -n "${NPM_OTP:-}" ]]; then
     NPM_CONFIG_USERCONFIG="$TMP_NPMRC" npm publish --access public --registry="${REGISTRY}" --otp "${NPM_OTP}"
   else

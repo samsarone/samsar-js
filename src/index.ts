@@ -56,6 +56,111 @@ export interface FontOptions {
   family?: string;
 }
 
+export type BackingTrackModel =
+  | 'LYRIA3'
+  | 'LYRIA2'
+  | 'ELEVENLABS_MUSIC'
+  | 'Lyria 3'
+  | 'Lyria 2'
+  | 'ElevenLabs music'
+  | string;
+
+export type TTSModel =
+  | 'ELEVENLABS'
+  | 'OPENAI'
+  | 'GOOGLE'
+  | 'ElevenLabs'
+  | 'OpenAI'
+  | 'Google TTS'
+  | string;
+
+export type InferenceModel =
+  | 'gpt-5.5'
+  | 'GPT 5.5'
+  | 'gemini-3.1-pro'
+  | 'Gemini 3.1 Pro'
+  | string;
+
+export interface GoogleTTSSpeakerDetail {
+  provider?: 'GOOGLE' | string;
+  value?: string;
+  voiceId?: string;
+  name?: string;
+  label?: string;
+  languageCode?: string;
+  languageCodes?: string[];
+  Gender?: 'M' | 'F' | '' | string | null;
+  gender?: string;
+  genderCode?: string;
+  ssmlGender?: string;
+  naturalSampleRateHertz?: number | null;
+  voiceType?: string;
+  previewRequiresAuth?: boolean;
+  [key: string]: unknown;
+}
+
+export interface TTSSpeakerOptions {
+  allowOpenAI?: boolean;
+  allowElevenLabs?: boolean;
+  allowGoogle?: boolean;
+  openAISpeakers?: string[];
+  elevenLabsSpeakers?: string[];
+  googleSpeakers?: string[];
+  googleSpeakerDetails?: GoogleTTSSpeakerDetail[];
+  [key: string]: unknown;
+}
+
+export type OutroCtaImageSource =
+  | string
+  | {
+    url?: string;
+    image_url?: string;
+    imageUrl?: string;
+    public_url?: string;
+    publicUrl?: string;
+    source_url?: string;
+    sourceUrl?: string;
+    source?: string;
+    src?: string;
+    image?: string;
+    data_url?: string;
+    dataUrl?: string;
+    image_data?: string;
+    imageData?: string;
+    data?: string;
+    mime_type?: string;
+    mimeType?: string;
+    content_type?: string;
+    contentType?: string;
+    [key: string]: unknown;
+  };
+
+export interface OutroCtaImagePayload {
+  top_text?: string;
+  topText?: string;
+  cta_text_top?: string;
+  ctaTextTop?: string;
+  middle_image?: OutroCtaImageSource;
+  middleImage?: OutroCtaImageSource;
+  center_image?: OutroCtaImageSource;
+  centerImage?: OutroCtaImageSource;
+  middle?: OutroCtaImageSource;
+  center?: OutroCtaImageSource;
+  bottom_text?: string;
+  bottomText?: string;
+  cta_text_bottom?: string;
+  ctaTextBottom?: string;
+  url?: string;
+  image_url?: string;
+  imageUrl?: string;
+  src?: string;
+  data_url?: string;
+  dataUrl?: string;
+  image_data?: string;
+  imageData?: string;
+  [key: string]: unknown;
+}
+
 export type V2StepGenerationMode = 'one_step' | 'two_step';
 
 export interface V2StepGenerationOptions {
@@ -72,7 +177,19 @@ export interface CreateVideoFromTextInput extends V2StepGenerationOptions {
   duration: number;
   tone?: string;
   aspect_ratio?: string;
-  video_model_sub_type?: string;
+  backingtrack_model?: BackingTrackModel;
+  backing_track_model?: BackingTrackModel;
+  backingTrackModel?: BackingTrackModel;
+  music_provider?: BackingTrackModel;
+  musicProvider?: BackingTrackModel;
+  tts_model?: TTSModel;
+  ttsModel?: TTSModel;
+  tts_provider?: TTSModel;
+  ttsProvider?: TTSModel;
+  inference_model?: InferenceModel;
+  inferenceModel?: InferenceModel;
+  speakerOptions?: TTSSpeakerOptions;
+  speaker_options?: TTSSpeakerOptions;
   font_key?: string;
   fontKey?: string;
   subtitle_font?: string;
@@ -107,6 +224,10 @@ export interface CreateVideoFromTextInput extends V2StepGenerationOptions {
   ctaTextBottom?: string;
   cta_logo?: string;
   ctaLogo?: string;
+  outro_cta_image?: OutroCtaImagePayload | string;
+  outroCtaImage?: OutroCtaImagePayload | string;
+  cta_image?: OutroCtaImagePayload | string;
+  ctaImage?: OutroCtaImagePayload | string;
   add_footer_animation?: boolean;
   addFooterAnimation?: boolean;
   footer_metadata?: FooterMetadataItem[];
@@ -149,6 +270,7 @@ export type ImageListToVideoModel =
   | 'RUNWAYML'
   | 'VEO3.1I2V'
   | 'VEO3.1I2VFAST'
+  | 'COSMOS3SUPERI2V'
   | 'SEEDANCEI2V'
   | 'KLINGIMGTOVID3PRO'
   | 'HAPPYHORSEI2V';
@@ -190,6 +312,19 @@ export interface CreateVideoFromImageListInput extends V2StepGenerationOptions {
   aspectRatio?: ImageListToVideoAspectRatio;
   language?: string;
   languageString?: string | null;
+  backingtrack_model?: BackingTrackModel;
+  backing_track_model?: BackingTrackModel;
+  backingTrackModel?: BackingTrackModel;
+  music_provider?: BackingTrackModel;
+  musicProvider?: BackingTrackModel;
+  tts_model?: TTSModel;
+  ttsModel?: TTSModel;
+  tts_provider?: TTSModel;
+  ttsProvider?: TTSModel;
+  inference_model?: InferenceModel;
+  inferenceModel?: InferenceModel;
+  speakerOptions?: TTSSpeakerOptions;
+  speaker_options?: TTSSpeakerOptions;
   font_key?: string;
   fontKey?: string;
   subtitle_font?: string;
@@ -228,6 +363,10 @@ export interface CreateVideoFromImageListInput extends V2StepGenerationOptions {
   ctaTextBottom?: string;
   cta_logo?: string;
   ctaLogo?: string;
+  outro_cta_image?: OutroCtaImagePayload | string;
+  outroCtaImage?: OutroCtaImagePayload | string;
+  cta_image?: OutroCtaImagePayload | string;
+  ctaImage?: OutroCtaImagePayload | string;
   add_footer_animation?: boolean;
   addFooterAnimation?: boolean;
   footer_metadata?: FooterMetadataItem[];
@@ -362,6 +501,10 @@ export interface UpdateVideoOutroImageInput {
   ctaTextBottom?: string;
   cta_logo?: string;
   ctaLogo?: string;
+  outro_cta_image?: OutroCtaImagePayload | string;
+  outroCtaImage?: OutroCtaImagePayload | string;
+  cta_image?: OutroCtaImagePayload | string;
+  ctaImage?: OutroCtaImagePayload | string;
   [key: string]: unknown;
 }
 
@@ -436,6 +579,20 @@ export interface AddVideoOutroImageInput {
   outro_focus_area?: OutroFocusArea | null;
   outroFocustArea?: OutroFocusArea | null;
   outroFocusArea?: OutroFocusArea | null;
+  generate_outro_image?: boolean;
+  generateOutroImage?: boolean;
+  cta_url?: string;
+  ctaUrl?: string;
+  cta_text_top?: string;
+  ctaTextTop?: string;
+  cta_text_bottom?: string;
+  ctaTextBottom?: string;
+  cta_logo?: string;
+  ctaLogo?: string;
+  outro_cta_image?: OutroCtaImagePayload | string;
+  outroCtaImage?: OutroCtaImagePayload | string;
+  cta_image?: OutroCtaImagePayload | string;
+  ctaImage?: OutroCtaImagePayload | string;
   [key: string]: unknown;
 }
 
@@ -1050,24 +1207,6 @@ export interface RemoveBrandingFromImageResponse {
   global_status_id?: string;
   case_type?: string;
   image_url: string;
-  userId?: string;
-  creditsCharged?: number;
-  remainingCredits?: number;
-  [key: string]: unknown;
-}
-
-export interface ReplaceBrandingFromImageRequest {
-  image_urls: string[];
-}
-
-export interface ReplaceBrandingFromImageResponse {
-  status?: string;
-  message?: string;
-  request_id?: string;
-  session_id?: string;
-  global_status_id?: string;
-  case_type?: string;
-  image_urls: string[];
   userId?: string;
   creditsCharged?: number;
   remainingCredits?: number;
@@ -2084,6 +2223,20 @@ export interface CreditsRechargeResponse {
   [key: string]: unknown;
 }
 
+export interface V2CreditsRechargeRequest {
+  credits?: number;
+  credits_to_recharge?: number;
+  creditsToRecharge?: number;
+  [key: string]: unknown;
+}
+
+export interface V2CreditsGrantRequest {
+  credits?: number;
+  credits_to_grant?: number;
+  creditsToGrant?: number;
+  [key: string]: unknown;
+}
+
 export interface EnableAutoRechargeRequest {
   thresholdCredits?: number;
   amountUsd?: number;
@@ -2221,6 +2374,68 @@ function assertOptionalBoolean(
   }
 }
 
+function hasOutroCtaImageSource(value: unknown): boolean {
+  if (typeof value === 'string') {
+    return Boolean(value.trim());
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  const middleImage = getFirstDefinedInputValue(record, [
+    'middle_image',
+    'middleImage',
+    'center_image',
+    'centerImage',
+    'middle',
+    'center',
+  ]);
+  if (middleImage !== undefined) {
+    return hasOutroCtaImageSource(middleImage);
+  }
+
+  return Boolean(
+    getTrimmedString(record.url) ??
+    getTrimmedString(record.image_url) ??
+    getTrimmedString(record.imageUrl) ??
+    getTrimmedString(record.public_url) ??
+    getTrimmedString(record.publicUrl) ??
+    getTrimmedString(record.source_url) ??
+    getTrimmedString(record.sourceUrl) ??
+    getTrimmedString(record.source) ??
+    getTrimmedString(record.src) ??
+    getTrimmedString(record.image) ??
+    getTrimmedString(record.middle_image_url) ??
+    getTrimmedString(record.middleImageUrl) ??
+    getTrimmedString(record.center_image_url) ??
+    getTrimmedString(record.centerImageUrl) ??
+    getTrimmedString(record.data_url) ??
+    getTrimmedString(record.dataUrl) ??
+    getTrimmedString(record.image_data) ??
+    getTrimmedString(record.imageData) ??
+    getTrimmedString(record.data)
+  );
+}
+
+function normalizeOutroCtaImageInput(raw: Record<string, unknown>, context: string): unknown {
+  const value = resolveAliasedInputValue(
+    raw,
+    ['outro_cta_image', 'outroCtaImage', 'cta_image', 'ctaImage'],
+    'outro_cta_image',
+  );
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== 'string' && (typeof value !== 'object' || Array.isArray(value))) {
+    throw new Error(`outro_cta_image must be a string or object for ${context}`);
+  }
+  if (!hasOutroCtaImageSource(value)) {
+    throw new Error(`outro_cta_image.middle_image is required for ${context}`);
+  }
+  return value;
+}
+
 function getFirstDefinedInputValue(raw: Record<string, unknown>, aliases: string[]): unknown {
   for (const alias of aliases) {
     if (Object.prototype.hasOwnProperty.call(raw, alias)) {
@@ -2337,8 +2552,13 @@ function normalizeCreateVideoFromTextInput(input: CreateVideoFromTextInput): Cre
     ['cta_text_top', ['cta_text_top', 'ctaTextTop']],
     ['cta_text_bottom', ['cta_text_bottom', 'ctaTextBottom']],
     ['cta_logo', ['cta_logo', 'ctaLogo']],
+    ['outro_cta_image', ['outro_cta_image', 'outroCtaImage', 'cta_image', 'ctaImage']],
     ['add_footer_animation', ['add_footer_animation', 'addFooterAnimation']],
     ['footer_metadata', ['footer_metadata', 'footerMetadata']],
+    ['backingtrack_model', ['backingtrack_model', 'backing_track_model', 'backingTrackModel', 'music_provider', 'musicProvider']],
+    ['tts_model', ['tts_model', 'ttsModel', 'tts_provider', 'ttsProvider']],
+    ['inference_model', ['inference_model', 'inferenceModel']],
+    ['speakerOptions', ['speakerOptions', 'speaker_options']],
     ['enable_subtitles', ['enable_subtitles', 'enableSubtitles']],
     ['font_key', ['font_key', 'fontKey']],
   ];
@@ -2350,6 +2570,9 @@ function normalizeCreateVideoFromTextInput(input: CreateVideoFromTextInput): Cre
     }
   }
 
+  delete normalized.video_model_sub_type;
+  delete normalized.videoModelSubType;
+
   assertOptionalBoolean(normalized.enable_subtitles, 'enable_subtitles', 'createVideoFromText');
   assertOptionalBoolean(normalized.add_outro_animation, 'add_outro_animation', 'createVideoFromText');
   assertOptionalBoolean(normalized.add_outro_focus_area, 'add_outro_focus_area', 'createVideoFromText');
@@ -2358,10 +2581,21 @@ function normalizeCreateVideoFromTextInput(input: CreateVideoFromTextInput): Cre
 
   if (normalized.generate_outro_image === true) {
     const ctaUrl = typeof normalized.cta_url === 'string' ? normalized.cta_url.trim() : '';
-    if (!ctaUrl) {
-      throw new Error('cta_url is required when generate_outro_image is true for createVideoFromText');
+    const outroCtaImage = normalizeOutroCtaImageInput(normalized, 'createVideoFromText');
+    if (outroCtaImage !== undefined) {
+      normalized.outro_cta_image = outroCtaImage;
     }
-  } else if (normalized.add_outro_focus_area === true && normalized.add_outro_animation !== true) {
+    if (!ctaUrl && !outroCtaImage) {
+      throw new Error('cta_url or outro_cta_image is required when generate_outro_image is true for createVideoFromText');
+    }
+  } else {
+    const outroCtaImage = normalizeOutroCtaImageInput(normalized, 'createVideoFromText');
+    if (outroCtaImage !== undefined) {
+      normalized.outro_cta_image = outroCtaImage;
+    }
+  }
+
+  if (normalized.generate_outro_image !== true && normalized.add_outro_focus_area === true && normalized.add_outro_animation !== true) {
     throw new Error('add_outro_focus_area requires add_outro_animation to be true for createVideoFromText');
   }
 
@@ -2400,8 +2634,13 @@ function normalizeCreateVideoFromImageListInput(
     ['cta_text_top', ['cta_text_top', 'ctaTextTop']],
     ['cta_text_bottom', ['cta_text_bottom', 'ctaTextBottom']],
     ['cta_logo', ['cta_logo', 'ctaLogo']],
+    ['outro_cta_image', ['outro_cta_image', 'outroCtaImage', 'cta_image', 'ctaImage']],
     ['add_footer_animation', ['add_footer_animation', 'addFooterAnimation']],
     ['footer_metadata', ['footer_metadata', 'footerMetadata']],
+    ['backingtrack_model', ['backingtrack_model', 'backing_track_model', 'backingTrackModel', 'music_provider', 'musicProvider']],
+    ['tts_model', ['tts_model', 'ttsModel', 'tts_provider', 'ttsProvider']],
+    ['inference_model', ['inference_model', 'inferenceModel']],
+    ['speakerOptions', ['speakerOptions', 'speaker_options']],
     ['limit_single_narrator', ['limit_single_narrator', 'limitSingleNarrator']],
     ['add_narrator_avatar', ['add_narrator_avatar', 'addNarratorAvatar']],
     ['enable_subtitles', ['enable_subtitles', 'enableSubtitles']],
@@ -2415,6 +2654,9 @@ function normalizeCreateVideoFromImageListInput(
     }
   }
 
+  delete normalized.video_model_sub_type;
+  delete normalized.videoModelSubType;
+
   assertOptionalBoolean(normalized.enable_subtitles, 'enable_subtitles');
   assertOptionalBoolean(normalized.add_outro_animation, 'add_outro_animation');
   assertOptionalBoolean(normalized.add_outro_focus_area, 'add_outro_focus_area');
@@ -2423,6 +2665,10 @@ function normalizeCreateVideoFromImageListInput(
   assertOptionalBoolean(normalized.add_footer_animation, 'add_footer_animation');
   assertOptionalBoolean(normalized.limit_single_narrator, 'limit_single_narrator');
   assertOptionalBoolean(normalized.add_narrator_avatar, 'add_narrator_avatar');
+  const outroCtaImage = normalizeOutroCtaImageInput(normalized, 'createVideoFromImageList');
+  if (outroCtaImage !== undefined) {
+    normalized.outro_cta_image = outroCtaImage;
+  }
 
   if (normalized.add_narrator_avatar === true) {
     normalized.limit_single_narrator = true;
@@ -2442,8 +2688,8 @@ function normalizeCreateVideoFromImageListInput(
 
   if (normalized.generate_outro_image === true) {
     const ctaUrl = typeof normalized.cta_url === 'string' ? normalized.cta_url.trim() : '';
-    if (!ctaUrl) {
-      throw new Error('cta_url is required when generate_outro_image is true for createVideoFromImageList');
+    if (!ctaUrl && !outroCtaImage) {
+      throw new Error('cta_url or outro_cta_image is required when generate_outro_image is true for createVideoFromImageList');
     }
   } else if (normalized.add_outro_focus_area === true && normalized.add_outro_animation !== true) {
     throw new Error('add_outro_focus_area requires add_outro_animation to be true for createVideoFromImageList');
@@ -2621,9 +2867,10 @@ function normalizeUpdateVideoOutroImageInput(
   const ctaLogo =
     (raw.cta_logo as string | undefined) ??
     (raw.ctaLogo as string | undefined);
+  const outroCtaImage = normalizeOutroCtaImageInput(raw, context);
   const generateOutroImage =
     rawGenerateOutroImage === true ||
-    (rawGenerateOutroImage === undefined && !outroImageUrl && Boolean(ctaUrl));
+    (rawGenerateOutroImage === undefined && !outroImageUrl && (Boolean(ctaUrl) || Boolean(outroCtaImage)));
 
   if (!videoSessionId) {
     throw new Error(`videoSessionId is required for ${context}`);
@@ -2637,15 +2884,15 @@ function normalizeUpdateVideoOutroImageInput(
   if (rawAddOutroFocusArea !== undefined && typeof rawAddOutroFocusArea !== 'boolean') {
     throw new Error(`add_outro_focus_area must be a boolean for ${context}`);
   }
-  if (generateOutroImage && outroImageUrl) {
-    throw new Error(`Use either generate_outro_image with cta_url or outro_image_url for ${context}`);
+  if ((generateOutroImage || outroCtaImage) && outroImageUrl) {
+    throw new Error(`Use either generate_outro_image with cta_url/outro_cta_image or outro_image_url for ${context}`);
   }
   if (!generateOutroImage && !outroImageUrl) {
     throw new Error(`outro_image_url is required for ${context} unless generate_outro_image is true`);
   }
   if (generateOutroImage) {
-    if (!ctaUrl || !String(ctaUrl).trim()) {
-      throw new Error(`cta_url is required when generate_outro_image is true for ${context}`);
+    if ((!ctaUrl || !String(ctaUrl).trim()) && !outroCtaImage) {
+      throw new Error(`cta_url or outro_cta_image is required when generate_outro_image is true for ${context}`);
     }
   } else if (rawAddOutroFocusArea === true && rawAddOutroAnimation !== true) {
     throw new Error(`add_outro_focus_area requires add_outro_animation to be true for ${context}`);
@@ -2666,7 +2913,8 @@ function normalizeUpdateVideoOutroImageInput(
     videoSessionId: String(videoSessionId),
     ...(outroImageUrl ? { outro_image_url: String(outroImageUrl) } : {}),
     generate_outro_image: generateOutroImage,
-    ...(generateOutroImage ? { cta_url: String(ctaUrl).trim() } : {}),
+    ...(generateOutroImage && ctaUrl ? { cta_url: String(ctaUrl).trim() } : {}),
+    ...(generateOutroImage && outroCtaImage ? { outro_cta_image: outroCtaImage } : {}),
     ...(ctaTextTop ? { cta_text_top: String(ctaTextTop) } : {}),
     ...(ctaTextBottom ? { cta_text_bottom: String(ctaTextBottom) } : {}),
     ...(ctaLogo ? { cta_logo: String(ctaLogo) } : {}),
@@ -2882,6 +3130,50 @@ export class SamsarClient {
     return this.getV2<CreditsBalanceResponse | ExternalCreditsBalanceResponse>('credits', options);
   }
 
+  async createV2CreditsRecharge(
+    payload: number | V2CreditsRechargeRequest,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<CreditsRechargeResponse | ExternalCreditsRechargeResponse>> {
+    const input: V2CreditsRechargeRequest = typeof payload === 'number' ? { credits: payload } : (payload ?? {});
+    const credits = Number(input.credits ?? input.credits_to_recharge ?? input.creditsToRecharge);
+    if (!Number.isFinite(credits) || credits <= 0 || !Number.isInteger(credits)) {
+      throw new Error('credits must be a positive integer');
+    }
+
+    return this.postV2<CreditsRechargeResponse | ExternalCreditsRechargeResponse>(
+      'credits/recharge',
+      {
+        input: {
+          ...input,
+          credits,
+        },
+      },
+      options,
+    );
+  }
+
+  async grantV2Credits(
+    payload: number | V2CreditsGrantRequest,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<ExternalCreditsGrantResponse>> {
+    const input: V2CreditsGrantRequest = typeof payload === 'number' ? { credits: payload } : (payload ?? {});
+    const credits = Number(input.credits ?? input.credits_to_grant ?? input.creditsToGrant);
+    if (!Number.isFinite(credits) || credits <= 0 || !Number.isInteger(credits)) {
+      throw new Error('credits must be a positive integer');
+    }
+
+    return this.postV2<ExternalCreditsGrantResponse>(
+      'credits/grant',
+      {
+        input: {
+          ...input,
+          credits,
+        },
+      },
+      options,
+    );
+  }
+
   async getV2UserCredits(options?: V2RequestOptions): Promise<SamsarResult<CreditsBalanceResponse>> {
     return this.getV2<CreditsBalanceResponse>('user/credits', options);
   }
@@ -3080,6 +3372,29 @@ export class SamsarClient {
     }
 
     return this.getV2<PaymentStatusResponse>('user/payment_status', {
+      ...(options ?? {}),
+      query,
+    });
+  }
+
+  async getV2PaymentStatus(
+    payload: PaymentStatusRequest,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<PaymentStatusResponse | ExternalPaymentStatusResponse>> {
+    const query: QueryParams = {
+      ...(options?.query ?? {}),
+    };
+    if (payload?.checkoutSessionId) {
+      query.checkoutSessionId = payload.checkoutSessionId;
+    }
+    if (payload?.paymentIntentId) {
+      query.paymentIntentId = payload.paymentIntentId;
+    }
+    if (payload?.setupIntentId) {
+      query.setupIntentId = payload.setupIntentId;
+    }
+
+    return this.getV2<PaymentStatusResponse | ExternalPaymentStatusResponse>('payment_status', {
       ...(options ?? {}),
       query,
     });
@@ -3364,10 +3679,37 @@ export class SamsarClient {
     input: AddVideoOutroImageInput,
     options?: V2RequestOptions,
   ): Promise<SamsarResult<AddVideoOutroImageResponse | ExternalRequestResponse>> {
+    const normalizedInput = normalizeUpdateVideoOutroImageInput(input, 'addV2VideoOutroImage');
     return this.postV2<AddVideoOutroImageResponse | ExternalRequestResponse>(
       'add_outro_image',
       {
-        input,
+        input: normalizedInput,
+        webhookUrl: options?.webhookUrl,
+      },
+      options,
+    );
+  }
+
+  async joinV2Videos(
+    input: JoinVideosInput,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<JoinVideosResponse | ExternalRequestResponse>> {
+    const rawIds = input.session_ids ?? input.sessionIds ?? input.video_session_ids ?? input.videoSessionIds;
+    const sessionIds = Array.isArray(rawIds)
+      ? rawIds.map((value) => (typeof value === 'string' ? value.trim() : '')).filter(Boolean)
+      : [];
+
+    if (sessionIds.length < 2) {
+      throw new Error('at least two session IDs are required for joinV2Videos');
+    }
+
+    return this.postV2<JoinVideosResponse | ExternalRequestResponse>(
+      'join_videos',
+      {
+        input: {
+          ...input,
+          session_ids: sessionIds,
+        },
         webhookUrl: options?.webhookUrl,
       },
       options,
@@ -3415,6 +3757,64 @@ export class SamsarClient {
     options?: V2RequestOptions & { queryParams?: QueryParams },
   ): Promise<SamsarResult<GlobalStatusDetailedResponse | ExternalStatusDetailedResponse>> {
     return this.getV2StatusDetailed(requestId, options);
+  }
+
+  /**
+   * Cancel an in-progress v2 render for an existing video session.
+   */
+  async cancelV2Render(
+    input: CancelRenderInput,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<CancelRenderResponse>> {
+    const raw = input as Record<string, unknown>;
+    const videoSessionId =
+      (raw.videoSessionId as string | undefined) ??
+      (raw.video_session_id as string | undefined) ??
+      (raw.videoSessionID as string | undefined) ??
+      (raw.session_id as string | undefined) ??
+      (raw.sessionId as string | undefined) ??
+      (raw.sessionID as string | undefined) ??
+      (raw.request_id as string | undefined) ??
+      (raw.requestId as string | undefined);
+
+    if (!videoSessionId) {
+      throw new Error('videoSessionId is required for cancelV2Render');
+    }
+
+    const response = await this.postV2<CancelRenderResponse>(
+      'cancel_render',
+      {
+        input: {
+          ...input,
+          videoSessionId: String(videoSessionId),
+        },
+      },
+      options,
+    );
+
+    const data = response.data as Record<string, unknown> | null;
+    if (data && typeof data === 'object') {
+      const sessionId =
+        typeof (data as any).sessionID === 'string'
+          ? (data as any).sessionID
+          : typeof (data as any).session_id === 'string'
+            ? (data as any).session_id
+            : typeof (data as any).request_id === 'string'
+              ? (data as any).request_id
+              : undefined;
+      const normalizedSessionId = sessionId ? String(sessionId) : undefined;
+
+      const normalizedData: CancelRenderResponse = {
+        ...(data as CancelRenderResponse),
+        sessionID: (data as CancelRenderResponse).sessionID ?? normalizedSessionId ?? '',
+        session_id: (data as CancelRenderResponse).session_id ?? normalizedSessionId,
+        request_id: (data as CancelRenderResponse).request_id ?? normalizedSessionId,
+      };
+
+      return { ...response, data: normalizedData };
+    }
+
+    return response;
   }
 
   /**
@@ -4168,68 +4568,10 @@ export class SamsarClient {
     input: AddVideoOutroImageInput,
     options?: { webhookUrl?: string } & SamsarRequestOptions,
   ): Promise<SamsarResult<AddVideoOutroImageResponse>> {
-    const raw = input as Record<string, unknown>;
-    const videoSessionId =
-      (raw.videoSessionId as string | undefined) ??
-      (raw.video_session_id as string | undefined) ??
-      (raw.videoSessionID as string | undefined) ??
-      (raw.session_id as string | undefined) ??
-      (raw.sessionId as string | undefined) ??
-      (raw.sessionID as string | undefined) ??
-      (raw.request_id as string | undefined) ??
-      (raw.requestId as string | undefined);
-    const outroImageUrl =
-      (raw.outro_image_url as string | undefined) ??
-      (raw.outroImageUrl as string | undefined) ??
-      (raw.new_outro_image_url as string | undefined) ??
-      (raw.newOutroImageUrl as string | undefined);
-    const rawAddOutroAnimation =
-      (raw.add_outro_animation as unknown) ??
-      (raw.addOutroAnimation as unknown);
-    const rawAddOutroFocusArea =
-      (raw.add_outro_focus_area as unknown) ??
-      (raw.addOutroFocusArea as unknown);
-    const rawOutroFocusArea =
-      (raw.outro_focust_area as unknown) ??
-      (raw.outro_focus_area as unknown) ??
-      (raw.outroFocustArea as unknown) ??
-      (raw.outroFocusArea as unknown);
-
-    if (!videoSessionId) {
-      throw new Error('videoSessionId is required for addVideoOutroImage');
-    }
-    if (!outroImageUrl) {
-      throw new Error('outro_image_url is required for addVideoOutroImage');
-    }
-    if (rawAddOutroAnimation !== undefined && typeof rawAddOutroAnimation !== 'boolean') {
-      throw new Error('add_outro_animation must be a boolean for addVideoOutroImage');
-    }
-    if (rawAddOutroFocusArea !== undefined && typeof rawAddOutroFocusArea !== 'boolean') {
-      throw new Error('add_outro_focus_area must be a boolean for addVideoOutroImage');
-    }
-    if (rawAddOutroFocusArea === true && rawAddOutroAnimation !== true) {
-      throw new Error('add_outro_focus_area requires add_outro_animation to be true for addVideoOutroImage');
-    }
-    if (rawAddOutroFocusArea === true) {
-      if (!rawOutroFocusArea || typeof rawOutroFocusArea !== 'object' || Array.isArray(rawOutroFocusArea)) {
-        throw new Error('outro_focust_area must be an object with x, y, width, height for addVideoOutroImage');
-      }
-      const { x, y, width, height } = rawOutroFocusArea as Record<string, unknown>;
-      const isInvalid = [x, y, width, height].some((value) => typeof value !== 'number' || !Number.isFinite(value));
-      if (isInvalid) {
-        throw new Error('outro_focust_area x, y, width, height must be valid numbers for addVideoOutroImage');
-      }
-    }
+    const normalizedInput = normalizeUpdateVideoOutroImageInput(input, 'addVideoOutroImage');
 
     const body = {
-      input: {
-        ...input,
-        videoSessionId: String(videoSessionId),
-        outro_image_url: String(outroImageUrl),
-        ...(rawAddOutroAnimation !== undefined ? { add_outro_animation: rawAddOutroAnimation === true } : {}),
-        ...(rawAddOutroFocusArea !== undefined ? { add_outro_focus_area: rawAddOutroFocusArea === true } : {}),
-        ...(rawOutroFocusArea !== undefined ? { outro_focust_area: rawOutroFocusArea } : {}),
-      },
+      input: normalizedInput,
       webhookUrl: options?.webhookUrl,
     };
 
@@ -4272,75 +4614,11 @@ export class SamsarClient {
     input: AddVideoOutroImageInput,
     options?: { webhookUrl?: string } & SamsarRequestOptions,
   ): Promise<SamsarResult<ExternalRequestResponse>> {
-    const raw = input as Record<string, unknown>;
-    const videoSessionId =
-      (raw.videoSessionId as string | undefined) ??
-      (raw.video_session_id as string | undefined) ??
-      (raw.videoSessionID as string | undefined) ??
-      (raw.session_id as string | undefined) ??
-      (raw.sessionId as string | undefined) ??
-      (raw.sessionID as string | undefined) ??
-      (raw.request_id as string | undefined) ??
-      (raw.requestId as string | undefined) ??
-      (raw.source_request_id as string | undefined) ??
-      (raw.sourceRequestId as string | undefined) ??
-      (raw.external_request_id as string | undefined) ??
-      (raw.externalRequestId as string | undefined) ??
-      (raw.external_session_id as string | undefined) ??
-      (raw.externalSessionId as string | undefined);
-    const outroImageUrl =
-      (raw.outro_image_url as string | undefined) ??
-      (raw.outroImageUrl as string | undefined) ??
-      (raw.new_outro_image_url as string | undefined) ??
-      (raw.newOutroImageUrl as string | undefined);
-    const rawAddOutroAnimation =
-      (raw.add_outro_animation as unknown) ??
-      (raw.addOutroAnimation as unknown);
-    const rawAddOutroFocusArea =
-      (raw.add_outro_focus_area as unknown) ??
-      (raw.addOutroFocusArea as unknown);
-    const rawOutroFocusArea =
-      (raw.outro_focust_area as unknown) ??
-      (raw.outro_focus_area as unknown) ??
-      (raw.outroFocustArea as unknown) ??
-      (raw.outroFocusArea as unknown);
-
-    if (!videoSessionId) {
-      throw new Error('videoSessionId is required for addExternalVideoOutroImage');
-    }
-    if (!outroImageUrl) {
-      throw new Error('outro_image_url is required for addExternalVideoOutroImage');
-    }
-    if (rawAddOutroAnimation !== undefined && typeof rawAddOutroAnimation !== 'boolean') {
-      throw new Error('add_outro_animation must be a boolean for addExternalVideoOutroImage');
-    }
-    if (rawAddOutroFocusArea !== undefined && typeof rawAddOutroFocusArea !== 'boolean') {
-      throw new Error('add_outro_focus_area must be a boolean for addExternalVideoOutroImage');
-    }
-    if (rawAddOutroFocusArea === true && rawAddOutroAnimation !== true) {
-      throw new Error('add_outro_focus_area requires add_outro_animation to be true for addExternalVideoOutroImage');
-    }
-    if (rawAddOutroFocusArea === true) {
-      if (!rawOutroFocusArea || typeof rawOutroFocusArea !== 'object' || Array.isArray(rawOutroFocusArea)) {
-        throw new Error('outro_focust_area must be an object with x, y, width, height for addExternalVideoOutroImage');
-      }
-      const { x, y, width, height } = rawOutroFocusArea as Record<string, unknown>;
-      const isInvalid = [x, y, width, height].some((value) => typeof value !== 'number' || !Number.isFinite(value));
-      if (isInvalid) {
-        throw new Error('outro_focust_area x, y, width, height must be valid numbers for addExternalVideoOutroImage');
-      }
-    }
+    const normalizedInput = normalizeUpdateVideoOutroImageInput(input, 'addExternalVideoOutroImage');
 
     const body = {
       external_user: normalizeExternalUserIdentity(externalUser),
-      input: {
-        ...input,
-        videoSessionId: String(videoSessionId),
-        outro_image_url: String(outroImageUrl),
-        ...(rawAddOutroAnimation !== undefined ? { add_outro_animation: rawAddOutroAnimation === true } : {}),
-        ...(rawAddOutroFocusArea !== undefined ? { add_outro_focus_area: rawAddOutroFocusArea === true } : {}),
-        ...(rawOutroFocusArea !== undefined ? { outro_focust_area: rawOutroFocusArea } : {}),
-      },
+      input: normalizedInput,
       webhookUrl: options?.webhookUrl,
     };
 
@@ -4692,23 +4970,13 @@ export class SamsarClient {
   }
 
   /**
-   * Remove branding/watermark from an image by URL.
+   * Remove visible text from an image by URL.
    */
   async removeBrandingFromImage(
     payload: RemoveBrandingFromImageRequest,
     options?: SamsarRequestOptions,
   ): Promise<SamsarResult<RemoveBrandingFromImageResponse>> {
     return this.post<RemoveBrandingFromImageResponse>('image/remove_branding', payload, options);
-  }
-
-  /**
-   * Replace branding/watermark on an image by providing the original and replacement image URLs.
-   */
-  async replaceBrandingFromImage(
-    payload: ReplaceBrandingFromImageRequest,
-    options?: SamsarRequestOptions,
-  ): Promise<SamsarResult<ReplaceBrandingFromImageResponse>> {
-    return this.post<ReplaceBrandingFromImageResponse>('image/replace_branding', payload, options);
   }
 
   /**
