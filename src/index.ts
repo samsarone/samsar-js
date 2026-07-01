@@ -49,6 +49,106 @@ export interface SamsarResult<T> {
   raw: Response;
 }
 
+export interface SamsarApiKeyValidationResponse {
+  valid: boolean;
+  authType?: string;
+  email?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  remainingCredits?: number;
+  message?: string;
+  [key: string]: unknown;
+}
+
+export interface DeploymentProviderCredentials {
+  samsarApiKey?: string;
+  samsar_api_key?: string;
+  openaiApiKey?: string;
+  openai_api_key?: string;
+  falApiKey?: string;
+  fal_api_key?: string;
+  runwayApiKey?: string;
+  runway_api_key?: string;
+  googleCredentialsJson?: string;
+  google_credentials_json?: string;
+  googleCredentialsJsonB64?: string;
+  google_credentials_json_b64?: string;
+  googleProjectId?: string;
+  google_project_id?: string;
+  validateFalRemotely?: boolean;
+  validate_fal_remotely?: boolean;
+  [key: string]: unknown;
+}
+
+export interface DeploymentProviderValidationResponse {
+  providers: Record<string, {
+    provider?: string;
+    status?: string;
+    ok?: boolean;
+    message?: string;
+    remainingCredits?: number;
+    email?: string | null;
+    [key: string]: unknown;
+  }>;
+  available: {
+    providers: string[];
+    models: string[];
+    actions: string[];
+  };
+  [key: string]: unknown;
+}
+
+export interface DeploymentProviderCapabilitiesResponse {
+  providers: Record<string, {
+    label?: string;
+    models?: string[];
+    actions?: string[];
+    [key: string]: unknown;
+  }>;
+  [key: string]: unknown;
+}
+
+export interface ExternalChatCompletionRequest {
+  model?: InferenceModel;
+  messages: Array<Record<string, unknown>>;
+  stream?: false;
+  temperature?: number;
+  top_p?: number;
+  max_tokens?: number;
+  response_format?: Record<string, unknown>;
+  provider_options?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface ExternalChatCompletionResponse {
+  id?: string;
+  object?: string;
+  created?: number;
+  model?: string;
+  choices?: Array<Record<string, unknown>>;
+  usage?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface ExternalMediaRequest {
+  input?: Record<string, unknown>;
+  webhookUrl?: string;
+  webhook_url?: string;
+  [key: string]: unknown;
+}
+
+export interface ExternalMediaResponse {
+  request_id?: string;
+  session_id?: string;
+  sessionID?: string;
+  status?: string;
+  message?: string;
+  status_endpoint?: string;
+  creditsCharged?: number;
+  remainingCredits?: number | null;
+  [key: string]: unknown;
+}
+
 export interface FontOptions {
   key?: string;
   font_key?: string;
@@ -107,6 +207,57 @@ export interface TTSSpeakerOptions {
   elevenLabsSpeakers?: string[];
   googleSpeakers?: string[];
   googleSpeakerDetails?: GoogleTTSSpeakerDetail[];
+  [key: string]: unknown;
+}
+
+export type OutroCtaImageSource =
+  | string
+  | {
+    url?: string;
+    image_url?: string;
+    imageUrl?: string;
+    public_url?: string;
+    publicUrl?: string;
+    source_url?: string;
+    sourceUrl?: string;
+    source?: string;
+    src?: string;
+    image?: string;
+    data_url?: string;
+    dataUrl?: string;
+    image_data?: string;
+    imageData?: string;
+    data?: string;
+    mime_type?: string;
+    mimeType?: string;
+    content_type?: string;
+    contentType?: string;
+    [key: string]: unknown;
+  };
+
+export interface OutroCtaImagePayload {
+  top_text?: string;
+  topText?: string;
+  cta_text_top?: string;
+  ctaTextTop?: string;
+  middle_image?: OutroCtaImageSource;
+  middleImage?: OutroCtaImageSource;
+  center_image?: OutroCtaImageSource;
+  centerImage?: OutroCtaImageSource;
+  middle?: OutroCtaImageSource;
+  center?: OutroCtaImageSource;
+  bottom_text?: string;
+  bottomText?: string;
+  cta_text_bottom?: string;
+  ctaTextBottom?: string;
+  url?: string;
+  image_url?: string;
+  imageUrl?: string;
+  src?: string;
+  data_url?: string;
+  dataUrl?: string;
+  image_data?: string;
+  imageData?: string;
   [key: string]: unknown;
 }
 
@@ -173,6 +324,10 @@ export interface CreateVideoFromTextInput extends V2StepGenerationOptions {
   ctaTextBottom?: string;
   cta_logo?: string;
   ctaLogo?: string;
+  outro_cta_image?: OutroCtaImagePayload | string;
+  outroCtaImage?: OutroCtaImagePayload | string;
+  cta_image?: OutroCtaImagePayload | string;
+  ctaImage?: OutroCtaImagePayload | string;
   add_footer_animation?: boolean;
   addFooterAnimation?: boolean;
   footer_metadata?: FooterMetadataItem[];
@@ -308,6 +463,10 @@ export interface CreateVideoFromImageListInput extends V2StepGenerationOptions {
   ctaTextBottom?: string;
   cta_logo?: string;
   ctaLogo?: string;
+  outro_cta_image?: OutroCtaImagePayload | string;
+  outroCtaImage?: OutroCtaImagePayload | string;
+  cta_image?: OutroCtaImagePayload | string;
+  ctaImage?: OutroCtaImagePayload | string;
   add_footer_animation?: boolean;
   addFooterAnimation?: boolean;
   footer_metadata?: FooterMetadataItem[];
@@ -442,6 +601,10 @@ export interface UpdateVideoOutroImageInput {
   ctaTextBottom?: string;
   cta_logo?: string;
   ctaLogo?: string;
+  outro_cta_image?: OutroCtaImagePayload | string;
+  outroCtaImage?: OutroCtaImagePayload | string;
+  cta_image?: OutroCtaImagePayload | string;
+  ctaImage?: OutroCtaImagePayload | string;
   [key: string]: unknown;
 }
 
@@ -516,6 +679,20 @@ export interface AddVideoOutroImageInput {
   outro_focus_area?: OutroFocusArea | null;
   outroFocustArea?: OutroFocusArea | null;
   outroFocusArea?: OutroFocusArea | null;
+  generate_outro_image?: boolean;
+  generateOutroImage?: boolean;
+  cta_url?: string;
+  ctaUrl?: string;
+  cta_text_top?: string;
+  ctaTextTop?: string;
+  cta_text_bottom?: string;
+  ctaTextBottom?: string;
+  cta_logo?: string;
+  ctaLogo?: string;
+  outro_cta_image?: OutroCtaImagePayload | string;
+  outroCtaImage?: OutroCtaImagePayload | string;
+  cta_image?: OutroCtaImagePayload | string;
+  ctaImage?: OutroCtaImagePayload | string;
   [key: string]: unknown;
 }
 
@@ -2297,6 +2474,68 @@ function assertOptionalBoolean(
   }
 }
 
+function hasOutroCtaImageSource(value: unknown): boolean {
+  if (typeof value === 'string') {
+    return Boolean(value.trim());
+  }
+  if (!value || typeof value !== 'object' || Array.isArray(value)) {
+    return false;
+  }
+
+  const record = value as Record<string, unknown>;
+  const middleImage = getFirstDefinedInputValue(record, [
+    'middle_image',
+    'middleImage',
+    'center_image',
+    'centerImage',
+    'middle',
+    'center',
+  ]);
+  if (middleImage !== undefined) {
+    return hasOutroCtaImageSource(middleImage);
+  }
+
+  return Boolean(
+    getTrimmedString(record.url) ??
+    getTrimmedString(record.image_url) ??
+    getTrimmedString(record.imageUrl) ??
+    getTrimmedString(record.public_url) ??
+    getTrimmedString(record.publicUrl) ??
+    getTrimmedString(record.source_url) ??
+    getTrimmedString(record.sourceUrl) ??
+    getTrimmedString(record.source) ??
+    getTrimmedString(record.src) ??
+    getTrimmedString(record.image) ??
+    getTrimmedString(record.middle_image_url) ??
+    getTrimmedString(record.middleImageUrl) ??
+    getTrimmedString(record.center_image_url) ??
+    getTrimmedString(record.centerImageUrl) ??
+    getTrimmedString(record.data_url) ??
+    getTrimmedString(record.dataUrl) ??
+    getTrimmedString(record.image_data) ??
+    getTrimmedString(record.imageData) ??
+    getTrimmedString(record.data)
+  );
+}
+
+function normalizeOutroCtaImageInput(raw: Record<string, unknown>, context: string): unknown {
+  const value = resolveAliasedInputValue(
+    raw,
+    ['outro_cta_image', 'outroCtaImage', 'cta_image', 'ctaImage'],
+    'outro_cta_image',
+  );
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (typeof value !== 'string' && (typeof value !== 'object' || Array.isArray(value))) {
+    throw new Error(`outro_cta_image must be a string or object for ${context}`);
+  }
+  if (!hasOutroCtaImageSource(value)) {
+    throw new Error(`outro_cta_image.middle_image is required for ${context}`);
+  }
+  return value;
+}
+
 function getFirstDefinedInputValue(raw: Record<string, unknown>, aliases: string[]): unknown {
   for (const alias of aliases) {
     if (Object.prototype.hasOwnProperty.call(raw, alias)) {
@@ -2413,6 +2652,7 @@ function normalizeCreateVideoFromTextInput(input: CreateVideoFromTextInput): Cre
     ['cta_text_top', ['cta_text_top', 'ctaTextTop']],
     ['cta_text_bottom', ['cta_text_bottom', 'ctaTextBottom']],
     ['cta_logo', ['cta_logo', 'ctaLogo']],
+    ['outro_cta_image', ['outro_cta_image', 'outroCtaImage', 'cta_image', 'ctaImage']],
     ['add_footer_animation', ['add_footer_animation', 'addFooterAnimation']],
     ['footer_metadata', ['footer_metadata', 'footerMetadata']],
     ['backingtrack_model', ['backingtrack_model', 'backing_track_model', 'backingTrackModel', 'music_provider', 'musicProvider']],
@@ -2441,10 +2681,21 @@ function normalizeCreateVideoFromTextInput(input: CreateVideoFromTextInput): Cre
 
   if (normalized.generate_outro_image === true) {
     const ctaUrl = typeof normalized.cta_url === 'string' ? normalized.cta_url.trim() : '';
-    if (!ctaUrl) {
-      throw new Error('cta_url is required when generate_outro_image is true for createVideoFromText');
+    const outroCtaImage = normalizeOutroCtaImageInput(normalized, 'createVideoFromText');
+    if (outroCtaImage !== undefined) {
+      normalized.outro_cta_image = outroCtaImage;
     }
-  } else if (normalized.add_outro_focus_area === true && normalized.add_outro_animation !== true) {
+    if (!ctaUrl && !outroCtaImage) {
+      throw new Error('cta_url or outro_cta_image is required when generate_outro_image is true for createVideoFromText');
+    }
+  } else {
+    const outroCtaImage = normalizeOutroCtaImageInput(normalized, 'createVideoFromText');
+    if (outroCtaImage !== undefined) {
+      normalized.outro_cta_image = outroCtaImage;
+    }
+  }
+
+  if (normalized.generate_outro_image !== true && normalized.add_outro_focus_area === true && normalized.add_outro_animation !== true) {
     throw new Error('add_outro_focus_area requires add_outro_animation to be true for createVideoFromText');
   }
 
@@ -2483,6 +2734,7 @@ function normalizeCreateVideoFromImageListInput(
     ['cta_text_top', ['cta_text_top', 'ctaTextTop']],
     ['cta_text_bottom', ['cta_text_bottom', 'ctaTextBottom']],
     ['cta_logo', ['cta_logo', 'ctaLogo']],
+    ['outro_cta_image', ['outro_cta_image', 'outroCtaImage', 'cta_image', 'ctaImage']],
     ['add_footer_animation', ['add_footer_animation', 'addFooterAnimation']],
     ['footer_metadata', ['footer_metadata', 'footerMetadata']],
     ['backingtrack_model', ['backingtrack_model', 'backing_track_model', 'backingTrackModel', 'music_provider', 'musicProvider']],
@@ -2513,6 +2765,10 @@ function normalizeCreateVideoFromImageListInput(
   assertOptionalBoolean(normalized.add_footer_animation, 'add_footer_animation');
   assertOptionalBoolean(normalized.limit_single_narrator, 'limit_single_narrator');
   assertOptionalBoolean(normalized.add_narrator_avatar, 'add_narrator_avatar');
+  const outroCtaImage = normalizeOutroCtaImageInput(normalized, 'createVideoFromImageList');
+  if (outroCtaImage !== undefined) {
+    normalized.outro_cta_image = outroCtaImage;
+  }
 
   if (normalized.add_narrator_avatar === true) {
     normalized.limit_single_narrator = true;
@@ -2532,8 +2788,8 @@ function normalizeCreateVideoFromImageListInput(
 
   if (normalized.generate_outro_image === true) {
     const ctaUrl = typeof normalized.cta_url === 'string' ? normalized.cta_url.trim() : '';
-    if (!ctaUrl) {
-      throw new Error('cta_url is required when generate_outro_image is true for createVideoFromImageList');
+    if (!ctaUrl && !outroCtaImage) {
+      throw new Error('cta_url or outro_cta_image is required when generate_outro_image is true for createVideoFromImageList');
     }
   } else if (normalized.add_outro_focus_area === true && normalized.add_outro_animation !== true) {
     throw new Error('add_outro_focus_area requires add_outro_animation to be true for createVideoFromImageList');
@@ -2711,9 +2967,10 @@ function normalizeUpdateVideoOutroImageInput(
   const ctaLogo =
     (raw.cta_logo as string | undefined) ??
     (raw.ctaLogo as string | undefined);
+  const outroCtaImage = normalizeOutroCtaImageInput(raw, context);
   const generateOutroImage =
     rawGenerateOutroImage === true ||
-    (rawGenerateOutroImage === undefined && !outroImageUrl && Boolean(ctaUrl));
+    (rawGenerateOutroImage === undefined && !outroImageUrl && (Boolean(ctaUrl) || Boolean(outroCtaImage)));
 
   if (!videoSessionId) {
     throw new Error(`videoSessionId is required for ${context}`);
@@ -2727,15 +2984,15 @@ function normalizeUpdateVideoOutroImageInput(
   if (rawAddOutroFocusArea !== undefined && typeof rawAddOutroFocusArea !== 'boolean') {
     throw new Error(`add_outro_focus_area must be a boolean for ${context}`);
   }
-  if (generateOutroImage && outroImageUrl) {
-    throw new Error(`Use either generate_outro_image with cta_url or outro_image_url for ${context}`);
+  if ((generateOutroImage || outroCtaImage) && outroImageUrl) {
+    throw new Error(`Use either generate_outro_image with cta_url/outro_cta_image or outro_image_url for ${context}`);
   }
   if (!generateOutroImage && !outroImageUrl) {
     throw new Error(`outro_image_url is required for ${context} unless generate_outro_image is true`);
   }
   if (generateOutroImage) {
-    if (!ctaUrl || !String(ctaUrl).trim()) {
-      throw new Error(`cta_url is required when generate_outro_image is true for ${context}`);
+    if ((!ctaUrl || !String(ctaUrl).trim()) && !outroCtaImage) {
+      throw new Error(`cta_url or outro_cta_image is required when generate_outro_image is true for ${context}`);
     }
   } else if (rawAddOutroFocusArea === true && rawAddOutroAnimation !== true) {
     throw new Error(`add_outro_focus_area requires add_outro_animation to be true for ${context}`);
@@ -2756,7 +3013,8 @@ function normalizeUpdateVideoOutroImageInput(
     videoSessionId: String(videoSessionId),
     ...(outroImageUrl ? { outro_image_url: String(outroImageUrl) } : {}),
     generate_outro_image: generateOutroImage,
-    ...(generateOutroImage ? { cta_url: String(ctaUrl).trim() } : {}),
+    ...(generateOutroImage && ctaUrl ? { cta_url: String(ctaUrl).trim() } : {}),
+    ...(generateOutroImage && outroCtaImage ? { outro_cta_image: outroCtaImage } : {}),
     ...(ctaTextTop ? { cta_text_top: String(ctaTextTop) } : {}),
     ...(ctaTextBottom ? { cta_text_bottom: String(ctaTextBottom) } : {}),
     ...(ctaLogo ? { cta_logo: String(ctaLogo) } : {}),
@@ -3521,10 +3779,11 @@ export class SamsarClient {
     input: AddVideoOutroImageInput,
     options?: V2RequestOptions,
   ): Promise<SamsarResult<AddVideoOutroImageResponse | ExternalRequestResponse>> {
+    const normalizedInput = normalizeUpdateVideoOutroImageInput(input, 'addV2VideoOutroImage');
     return this.postV2<AddVideoOutroImageResponse | ExternalRequestResponse>(
       'add_outro_image',
       {
-        input,
+        input: normalizedInput,
         webhookUrl: options?.webhookUrl,
       },
       options,
@@ -4409,68 +4668,10 @@ export class SamsarClient {
     input: AddVideoOutroImageInput,
     options?: { webhookUrl?: string } & SamsarRequestOptions,
   ): Promise<SamsarResult<AddVideoOutroImageResponse>> {
-    const raw = input as Record<string, unknown>;
-    const videoSessionId =
-      (raw.videoSessionId as string | undefined) ??
-      (raw.video_session_id as string | undefined) ??
-      (raw.videoSessionID as string | undefined) ??
-      (raw.session_id as string | undefined) ??
-      (raw.sessionId as string | undefined) ??
-      (raw.sessionID as string | undefined) ??
-      (raw.request_id as string | undefined) ??
-      (raw.requestId as string | undefined);
-    const outroImageUrl =
-      (raw.outro_image_url as string | undefined) ??
-      (raw.outroImageUrl as string | undefined) ??
-      (raw.new_outro_image_url as string | undefined) ??
-      (raw.newOutroImageUrl as string | undefined);
-    const rawAddOutroAnimation =
-      (raw.add_outro_animation as unknown) ??
-      (raw.addOutroAnimation as unknown);
-    const rawAddOutroFocusArea =
-      (raw.add_outro_focus_area as unknown) ??
-      (raw.addOutroFocusArea as unknown);
-    const rawOutroFocusArea =
-      (raw.outro_focust_area as unknown) ??
-      (raw.outro_focus_area as unknown) ??
-      (raw.outroFocustArea as unknown) ??
-      (raw.outroFocusArea as unknown);
-
-    if (!videoSessionId) {
-      throw new Error('videoSessionId is required for addVideoOutroImage');
-    }
-    if (!outroImageUrl) {
-      throw new Error('outro_image_url is required for addVideoOutroImage');
-    }
-    if (rawAddOutroAnimation !== undefined && typeof rawAddOutroAnimation !== 'boolean') {
-      throw new Error('add_outro_animation must be a boolean for addVideoOutroImage');
-    }
-    if (rawAddOutroFocusArea !== undefined && typeof rawAddOutroFocusArea !== 'boolean') {
-      throw new Error('add_outro_focus_area must be a boolean for addVideoOutroImage');
-    }
-    if (rawAddOutroFocusArea === true && rawAddOutroAnimation !== true) {
-      throw new Error('add_outro_focus_area requires add_outro_animation to be true for addVideoOutroImage');
-    }
-    if (rawAddOutroFocusArea === true) {
-      if (!rawOutroFocusArea || typeof rawOutroFocusArea !== 'object' || Array.isArray(rawOutroFocusArea)) {
-        throw new Error('outro_focust_area must be an object with x, y, width, height for addVideoOutroImage');
-      }
-      const { x, y, width, height } = rawOutroFocusArea as Record<string, unknown>;
-      const isInvalid = [x, y, width, height].some((value) => typeof value !== 'number' || !Number.isFinite(value));
-      if (isInvalid) {
-        throw new Error('outro_focust_area x, y, width, height must be valid numbers for addVideoOutroImage');
-      }
-    }
+    const normalizedInput = normalizeUpdateVideoOutroImageInput(input, 'addVideoOutroImage');
 
     const body = {
-      input: {
-        ...input,
-        videoSessionId: String(videoSessionId),
-        outro_image_url: String(outroImageUrl),
-        ...(rawAddOutroAnimation !== undefined ? { add_outro_animation: rawAddOutroAnimation === true } : {}),
-        ...(rawAddOutroFocusArea !== undefined ? { add_outro_focus_area: rawAddOutroFocusArea === true } : {}),
-        ...(rawOutroFocusArea !== undefined ? { outro_focust_area: rawOutroFocusArea } : {}),
-      },
+      input: normalizedInput,
       webhookUrl: options?.webhookUrl,
     };
 
@@ -4513,75 +4714,11 @@ export class SamsarClient {
     input: AddVideoOutroImageInput,
     options?: { webhookUrl?: string } & SamsarRequestOptions,
   ): Promise<SamsarResult<ExternalRequestResponse>> {
-    const raw = input as Record<string, unknown>;
-    const videoSessionId =
-      (raw.videoSessionId as string | undefined) ??
-      (raw.video_session_id as string | undefined) ??
-      (raw.videoSessionID as string | undefined) ??
-      (raw.session_id as string | undefined) ??
-      (raw.sessionId as string | undefined) ??
-      (raw.sessionID as string | undefined) ??
-      (raw.request_id as string | undefined) ??
-      (raw.requestId as string | undefined) ??
-      (raw.source_request_id as string | undefined) ??
-      (raw.sourceRequestId as string | undefined) ??
-      (raw.external_request_id as string | undefined) ??
-      (raw.externalRequestId as string | undefined) ??
-      (raw.external_session_id as string | undefined) ??
-      (raw.externalSessionId as string | undefined);
-    const outroImageUrl =
-      (raw.outro_image_url as string | undefined) ??
-      (raw.outroImageUrl as string | undefined) ??
-      (raw.new_outro_image_url as string | undefined) ??
-      (raw.newOutroImageUrl as string | undefined);
-    const rawAddOutroAnimation =
-      (raw.add_outro_animation as unknown) ??
-      (raw.addOutroAnimation as unknown);
-    const rawAddOutroFocusArea =
-      (raw.add_outro_focus_area as unknown) ??
-      (raw.addOutroFocusArea as unknown);
-    const rawOutroFocusArea =
-      (raw.outro_focust_area as unknown) ??
-      (raw.outro_focus_area as unknown) ??
-      (raw.outroFocustArea as unknown) ??
-      (raw.outroFocusArea as unknown);
-
-    if (!videoSessionId) {
-      throw new Error('videoSessionId is required for addExternalVideoOutroImage');
-    }
-    if (!outroImageUrl) {
-      throw new Error('outro_image_url is required for addExternalVideoOutroImage');
-    }
-    if (rawAddOutroAnimation !== undefined && typeof rawAddOutroAnimation !== 'boolean') {
-      throw new Error('add_outro_animation must be a boolean for addExternalVideoOutroImage');
-    }
-    if (rawAddOutroFocusArea !== undefined && typeof rawAddOutroFocusArea !== 'boolean') {
-      throw new Error('add_outro_focus_area must be a boolean for addExternalVideoOutroImage');
-    }
-    if (rawAddOutroFocusArea === true && rawAddOutroAnimation !== true) {
-      throw new Error('add_outro_focus_area requires add_outro_animation to be true for addExternalVideoOutroImage');
-    }
-    if (rawAddOutroFocusArea === true) {
-      if (!rawOutroFocusArea || typeof rawOutroFocusArea !== 'object' || Array.isArray(rawOutroFocusArea)) {
-        throw new Error('outro_focust_area must be an object with x, y, width, height for addExternalVideoOutroImage');
-      }
-      const { x, y, width, height } = rawOutroFocusArea as Record<string, unknown>;
-      const isInvalid = [x, y, width, height].some((value) => typeof value !== 'number' || !Number.isFinite(value));
-      if (isInvalid) {
-        throw new Error('outro_focust_area x, y, width, height must be valid numbers for addExternalVideoOutroImage');
-      }
-    }
+    const normalizedInput = normalizeUpdateVideoOutroImageInput(input, 'addExternalVideoOutroImage');
 
     const body = {
       external_user: normalizeExternalUserIdentity(externalUser),
-      input: {
-        ...input,
-        videoSessionId: String(videoSessionId),
-        outro_image_url: String(outroImageUrl),
-        ...(rawAddOutroAnimation !== undefined ? { add_outro_animation: rawAddOutroAnimation === true } : {}),
-        ...(rawAddOutroFocusArea !== undefined ? { add_outro_focus_area: rawAddOutroFocusArea === true } : {}),
-        ...(rawOutroFocusArea !== undefined ? { outro_focust_area: rawOutroFocusArea } : {}),
-      },
+      input: normalizedInput,
       webhookUrl: options?.webhookUrl,
     };
 
@@ -5483,6 +5620,308 @@ export class SamsarClient {
     return this.getStatus(requestId, { ...options, path: 'image/status' });
   }
 
+  /**
+   * Validate the configured Samsar API key, or a supplied key, against /external/api_key/validate.
+   */
+  async validateSamsarApiKey(
+    apiKey?: string,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<SamsarApiKeyValidationResponse>> {
+    return this.validateV2ExternalSamsarApiKey(apiKey, options);
+  }
+
+  /**
+   * Validate the configured Samsar API key, or a supplied key, against /v2/external/api_key/validate.
+   */
+  async validateV2ExternalSamsarApiKey(
+    apiKey?: string,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<SamsarApiKeyValidationResponse>> {
+    const headers = apiKey
+      ? { ...(options?.headers ?? {}), Authorization: `Bearer ${apiKey}` }
+      : options?.headers;
+    return this.get<SamsarApiKeyValidationResponse>(this.buildV2Url('external/api_key/validate'), {
+      ...(options ?? {}),
+      headers,
+    });
+  }
+
+  /**
+   * Fetch provider/model/action capabilities used by the deployment onboarding flow.
+   */
+  async getExternalProviderCapabilities(
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<DeploymentProviderCapabilitiesResponse>> {
+    return this.getV2ExternalProviderCapabilities(options);
+  }
+
+  /**
+   * Fetch provider/model/action capabilities from /v2/external/providers/capabilities.
+   */
+  async getV2ExternalProviderCapabilities(
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<DeploymentProviderCapabilitiesResponse>> {
+    return this.get<DeploymentProviderCapabilitiesResponse>(
+      this.buildV2Url('external/providers/capabilities'),
+      options,
+    );
+  }
+
+  /**
+   * Validate onboarding provider credentials without storing secrets in the SDK.
+   */
+  async validateDeploymentProviders(
+    payload: DeploymentProviderCredentials,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<DeploymentProviderValidationResponse>> {
+    return this.validateV2ExternalDeploymentProviders(payload, options);
+  }
+
+  /**
+   * Validate onboarding provider credentials through /v2/external/providers/validate.
+   */
+  async validateV2ExternalDeploymentProviders(
+    payload: DeploymentProviderCredentials,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<DeploymentProviderValidationResponse>> {
+    return this.post<DeploymentProviderValidationResponse>(
+      this.buildV2Url('external/providers/validate'),
+      payload,
+      options,
+    );
+  }
+
+  /**
+   * OpenAI-compatible external chat request billed through Samsar credits.
+   * This calls POST /external/chat.
+   */
+  async createExternalChat(
+    payload: ExternalChatCompletionRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalChatCompletionResponse>> {
+    return this.createV2ExternalChat(payload, options);
+  }
+
+  /**
+   * OpenAI-compatible external chat request billed through Samsar credits.
+   * This calls POST /v2/external/chat.
+   */
+  async createV2ExternalChat(
+    payload: ExternalChatCompletionRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalChatCompletionResponse>> {
+    return this.post<ExternalChatCompletionResponse>(
+      this.buildV2Url('external/chat'),
+      payload,
+      options,
+    );
+  }
+
+  /**
+   * OpenAI-compatible external chat completion billed through Samsar credits.
+   */
+  async createExternalChatCompletion(
+    payload: ExternalChatCompletionRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalChatCompletionResponse>> {
+    return this.createV2ExternalChatCompletion(payload, options);
+  }
+
+  /**
+   * OpenAI-compatible external chat completion billed through Samsar credits.
+   * This calls POST /v2/external/chat/completions.
+   */
+  async createV2ExternalChatCompletion(
+    payload: ExternalChatCompletionRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalChatCompletionResponse>> {
+    return this.post<ExternalChatCompletionResponse>(
+      this.buildV2Url('external/chat/completions'),
+      payload,
+      options,
+    );
+  }
+
+  /**
+   * Low-level wrapper for POST /v2/external/image/{path}. The external image surface mirrors
+   * the existing image API paths, for example assign_title, enhance, remove_branding,
+   * add_image_set, create_rollup_banner, and receipt_templates/query.
+   */
+  async requestExternalImage<T = ExternalMediaResponse>(
+    path: string,
+    payload: ExternalMediaRequest = {},
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<T>> {
+    return this.requestV2ExternalImage<T>(path, payload, options);
+  }
+
+  /**
+   * Low-level wrapper for POST /v2/external/image/{path}.
+   */
+  async requestV2ExternalImage<T = ExternalMediaResponse>(
+    path: string,
+    payload: ExternalMediaRequest = {},
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<T>> {
+    return this.post<T>(
+      this.buildV2Url(`external/image/${normalizeExternalRoutePath(path)}`),
+      payload,
+      options,
+    );
+  }
+
+  /**
+   * Retrieve status for an async /external/image request.
+   */
+  async getExternalImageStatus(
+    requestId: string,
+    options?: SamsarRequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<GlobalStatusResponse>> {
+    return this.getV2ExternalImageStatus(requestId, options);
+  }
+
+  /**
+   * Retrieve status for an async /v2/external/image request.
+   */
+  async getV2ExternalImageStatus(
+    requestId: string,
+    options?: SamsarRequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<GlobalStatusResponse>> {
+    return this.getStatus(requestId, {
+      ...options,
+      path: this.buildV2Url('external/image/status'),
+    });
+  }
+
+  /**
+   * Low-level wrapper for POST /v2/external/video/{path}. The external video surface mirrors
+   * the existing video API paths, including text_to_video, image_list_to_video,
+   * upload_image_data, update_outro_image, translate_video, join_videos, and clone.
+   */
+  async requestExternalVideo<T = ExternalMediaResponse>(
+    path: string,
+    payload: ExternalMediaRequest = {},
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<T>> {
+    return this.requestV2ExternalVideo<T>(path, payload, options);
+  }
+
+  /**
+   * Low-level wrapper for POST /v2/external/video/{path}.
+   */
+  async requestV2ExternalVideo<T = ExternalMediaResponse>(
+    path: string,
+    payload: ExternalMediaRequest = {},
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<T>> {
+    return this.post<T>(
+      this.buildV2Url(`external/video/${normalizeExternalRoutePath(path)}`),
+      payload,
+      options,
+    );
+  }
+
+  /**
+   * Create a central /v2/external/video text-to-video request using the same input shape as createVideoFromText.
+   */
+  async createExternalVideoRequestFromText(
+    input: CreateVideoFromTextInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalMediaResponse>> {
+    return this.createV2ExternalVideoRequestFromText(input, options);
+  }
+
+  /**
+   * Create a central /v2/external/video text-to-video request using the same input shape as createVideoFromText.
+   */
+  async createV2ExternalVideoRequestFromText(
+    input: CreateVideoFromTextInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalMediaResponse>> {
+    const normalizedInput = normalizeCreateVideoFromTextInput(input);
+    return this.requestV2ExternalVideo<ExternalMediaResponse>(
+      'text_to_video',
+      {
+        input: normalizedInput,
+        webhookUrl: options?.webhookUrl,
+      },
+      options,
+    );
+  }
+
+  /**
+   * Create a central /v2/external/video image-list-to-video request using the same input shape as createVideoFromImageList.
+   */
+  async createExternalVideoRequestFromImageList(
+    input: CreateVideoFromImageListInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalMediaResponse>> {
+    return this.createV2ExternalVideoRequestFromImageList(input, options);
+  }
+
+  /**
+   * Create a central /v2/external/video image-list-to-video request using the same input shape as createVideoFromImageList.
+   */
+  async createV2ExternalVideoRequestFromImageList(
+    input: CreateVideoFromImageListInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalMediaResponse>> {
+    const normalizedInput = normalizeCreateVideoFromImageListInput(input);
+    return this.requestV2ExternalVideo<ExternalMediaResponse>(
+      'image_list_to_video',
+      {
+        input: normalizedInput,
+        webhookUrl: options?.webhookUrl,
+      },
+      options,
+    );
+  }
+
+  /**
+   * Retrieve status for an async /external/video request.
+   */
+  async getExternalVideoStatus(
+    requestId: string,
+    options?: SamsarRequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<GlobalStatusResponse>> {
+    return this.getV2ExternalVideoStatus(requestId, options);
+  }
+
+  /**
+   * Retrieve status for an async /v2/external/video request.
+   */
+  async getV2ExternalVideoStatus(
+    requestId: string,
+    options?: SamsarRequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<GlobalStatusResponse>> {
+    return this.getStatus(requestId, {
+      ...options,
+      path: this.buildV2Url('external/video/status'),
+    });
+  }
+
+  /**
+   * Reserved wrapper for POST /v2/external/audio. The processor currently returns 501 until
+   * the external audio request schema is enabled.
+   */
+  async requestExternalAudio<T = ExternalMediaResponse>(
+    payload: ExternalMediaRequest = {},
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<T>> {
+    return this.requestV2ExternalAudio<T>(payload, options);
+  }
+
+  /**
+   * Reserved wrapper for POST /v2/external/audio. The processor currently returns 501 until
+   * the external audio request schema is enabled.
+   */
+  async requestV2ExternalAudio<T = ExternalMediaResponse>(
+    payload: ExternalMediaRequest = {},
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<T>> {
+    return this.post<T>(this.buildV2Url('external/audio'), payload, options);
+  }
+
   private async get<T>(path: string, options?: SamsarRequestOptions): Promise<SamsarResult<T>> {
     return this.request<T>(path, { ...(options ?? {}), method: 'GET' });
   }
@@ -5698,6 +6137,14 @@ export class SamsarClient {
 
 function trimTrailingSlash(url: string): string {
   return url.replace(/\/+$/, '');
+}
+
+function normalizeExternalRoutePath(path: string): string {
+  const cleanedPath = String(path || '').trim().replace(/^\/+|\/+$/g, '');
+  if (!cleanedPath) {
+    throw new Error('external route path is required');
+  }
+  return cleanedPath;
 }
 
 function buildAssignImageTitleBody(payload: AssignImageTitleRequest | FormData): Record<string, unknown> | FormData {

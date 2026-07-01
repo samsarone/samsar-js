@@ -38,6 +38,16 @@ if [[ -f ".env" ]]; then
   set +a
 fi
 
+if [[ "${EUID}" -eq 0 && "${ALLOW_SUDO_DEPLOY:-0}" != "1" ]]; then
+  echo "Do not run deploy.sh with sudo; it can leave git and npm files owned by root." >&2
+  if [[ -n "${SUDO_USER:-}" ]]; then
+    SUDO_GROUP="$(id -gn "${SUDO_USER}" 2>/dev/null || echo staff)"
+    echo "Fix existing ownership once, then run as your normal user:" >&2
+    echo "  sudo chown -R ${SUDO_USER}:${SUDO_GROUP} \"${ROOT_DIR}/.git\" \"${ROOT_DIR}/node_modules\"" >&2
+  fi
+  exit 1
+fi
+
 BUMP_LEVEL="${1:-none}"
 case "$BUMP_LEVEL" in
   none|patch|minor|major) ;;
@@ -51,6 +61,38 @@ AUTO_BUMP_ON_PUBLISHED="${AUTO_BUMP_ON_PUBLISHED:-1}"
 ALLOW_PUBLISHED_VERSION="${ALLOW_PUBLISHED_VERSION:-0}"
 GIT_PUSH="${GIT_PUSH:-1}"
 GIT_PUSH_GUIDESTINATION="${GIT_PUSH_GUIDESTINATION:-1}"
+
+ensure_release_branch_not_behind() {
+  if [[ "${GIT_PUSH}" != "1" ]]; then
+    return
+  fi
+
+  if ! git -C "${ROOT_DIR}" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    return
+  fi
+
+  local upstream_ref remote_name local_ahead remote_ahead
+  upstream_ref="$(git -C "${ROOT_DIR}" rev-parse --abbrev-ref --symbolic-full-name '@{u}' 2>/dev/null || true)"
+  if [[ -z "${upstream_ref}" ]]; then
+    return
+  fi
+
+  remote_name="${upstream_ref%%/*}"
+  if ! git -C "${ROOT_DIR}" fetch "${remote_name}"; then
+    echo "Unable to fetch ${remote_name}; refusing to publish before git branch sync is verified." >&2
+    echo "If you previously ran deploy.sh with sudo, fix repository ownership and retry." >&2
+    exit 1
+  fi
+
+  read -r local_ahead remote_ahead < <(git -C "${ROOT_DIR}" rev-list --left-right --count HEAD..."${upstream_ref}")
+  if [[ "${remote_ahead}" -gt 0 ]]; then
+    echo "Local branch is behind ${upstream_ref} by ${remote_ahead} commit(s)." >&2
+    echo "Pull/rebase the remote changes before deploying so npm publish and git push stay in sync." >&2
+    exit 1
+  fi
+}
+
+ensure_release_branch_not_behind
 
 if [[ "$BUMP_LEVEL" != "none" ]]; then
   npm version "$BUMP_LEVEL" --no-git-tag-version
@@ -121,21 +163,44 @@ fi
 
 if [[ "${already_published}" != "true" ]]; then
   TOKEN="${NPM_TOKEN:-${NODE_AUTH_TOKEN:-}}"
-  if [[ -z "${TOKEN}" ]]; then
-    echo "NPM_TOKEN (or NODE_AUTH_TOKEN) is required in env/.env" >&2
+  ACTIVE_NPM_USERCONFIG=""
+
+  npm_auth() {
+    if [[ -n "${ACTIVE_NPM_USERCONFIG}" ]]; then
+      NPM_CONFIG_USERCONFIG="${ACTIVE_NPM_USERCONFIG}" npm "$@"
+    else
+      npm "$@"
+    fi
+  }
+
+  if [[ -n "${TOKEN}" ]]; then
+    TMP_NPMRC="$(mktemp)"
+    TMP_FILES+=("$TMP_NPMRC")
+
+    printf "registry=%s\nalways-auth=true\n" "$REGISTRY" > "$TMP_NPMRC"
+    printf "%s:_authToken=%s\n" "$REGISTRY_AUTH_PREFIX" "$TOKEN" >> "$TMP_NPMRC"
+
+    if NPM_CONFIG_USERCONFIG="$TMP_NPMRC" npm whoami --registry="${REGISTRY}" >/dev/null 2>&1; then
+      ACTIVE_NPM_USERCONFIG="$TMP_NPMRC"
+    else
+      echo "Configured NPM_TOKEN/NODE_AUTH_TOKEN was rejected by ${REGISTRY}; falling back to your npm web login."
+    fi
+  fi
+
+  if [[ -z "${ACTIVE_NPM_USERCONFIG}" ]] && ! npm whoami --registry="${REGISTRY}" >/dev/null 2>&1; then
+    echo "Starting npm web login for ${REGISTRY}. This login is saved to your normal npm config."
+    npm login --registry="${REGISTRY}" --auth-type=web
+  fi
+
+  if ! npm_auth whoami --registry="${REGISTRY}" >/dev/null 2>&1; then
+    echo "npm authentication failed for ${REGISTRY}; cannot publish ${PACKAGE_NAME}@${PACKAGE_VERSION}." >&2
     exit 1
   fi
 
-  TMP_NPMRC="$(mktemp)"
-  TMP_FILES+=("$TMP_NPMRC")
-
-  printf "%s:_authToken=%s\nregistry=%s\nalways-auth=true\n" "$REGISTRY_AUTH_PREFIX" "$TOKEN" "$REGISTRY" > "$TMP_NPMRC"
-
-  NPM_CONFIG_USERCONFIG="$TMP_NPMRC" npm whoami --registry="${REGISTRY}" >/dev/null
   if [[ -n "${NPM_OTP:-}" ]]; then
-    NPM_CONFIG_USERCONFIG="$TMP_NPMRC" npm publish --access public --registry="${REGISTRY}" --otp "${NPM_OTP}"
+    npm_auth publish --access public --registry="${REGISTRY}" --otp "${NPM_OTP}"
   else
-    NPM_CONFIG_USERCONFIG="$TMP_NPMRC" npm publish --access public --registry="${REGISTRY}"
+    npm_auth publish --access public --registry="${REGISTRY}"
   fi
 else
   if [[ "$ALLOW_PUBLISHED_VERSION" != "1" ]]; then
@@ -444,11 +509,12 @@ commit_and_push_repo() {
   local repo_root
   repo_root="$(git -C "${repo_dir}" rev-parse --show-toplevel)"
 
-  if [[ "$#" -gt 0 ]]; then
-    git -C "${repo_root}" add -- "$@"
-  else
-    git -C "${repo_root}" add -A
+  if [[ "$#" -eq 0 ]]; then
+    echo "Refusing to commit in ${repo_root}: no explicit file list was provided." >&2
+    return 1
   fi
+
+  git -C "${repo_root}" add -- "$@"
 
   if git -C "${repo_root}" diff --cached --quiet; then
     echo "No changes to commit in ${repo_root}."
@@ -464,7 +530,9 @@ update_guidestination_manifests
 validate_guidestination_dependency_sync
 
 if [[ "${GIT_PUSH}" == "1" ]]; then
-  commit_and_push_repo "${ROOT_DIR}" "chore(release): publish ${PACKAGE_NAME}@${PACKAGE_VERSION}"
+  commit_and_push_repo "${ROOT_DIR}" "chore(release): publish ${PACKAGE_NAME}@${PACKAGE_VERSION}" \
+    "package.json" \
+    "package-lock.json"
 else
   echo "Skipping samsar-js git push (GIT_PUSH=${GIT_PUSH})."
 fi
