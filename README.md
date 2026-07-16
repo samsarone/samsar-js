@@ -461,6 +461,33 @@ await samsar.editPublication({
 
 await samsar.revokePublication(videoFromImages.data.session_id ?? videoFromImages.data.request_id!);
 
+// Search and recommend from the dedicated Samsar Gallery semantic index
+const gallerySearch = await samsar.searchGallery({
+  query: 'cinematic science documentary',
+  format: 'landscape',
+  limit: 12,
+});
+
+const related = await samsar.getGalleryRecommendations({
+  publication_id: gallerySearch.data.items[0]?.id,
+  limit: 10,
+});
+
+// Server-side service accounts can record watch metadata and run incremental indexing
+await samsar.recordGalleryView({
+  publication_id: related.data.items[0]?.id,
+  viewer_id: 'signed-or-hashed-viewer-id',
+  event_type: 'complete',
+  watch_time_ms: 42000,
+  duration_ms: 42000,
+});
+
+await samsar.syncGalleryEmbeddings();
+
+// Request-driven refresh: the processor runs an incremental diff only when the
+// publication index has been stale for at least one hour.
+await samsar.updateGalleryPublicationEmbeddings({ force: false });
+
 // Image-specific status endpoint
 const rollupStatus = await samsar.getImageStatus(rollup.data.session_id);
 
@@ -578,6 +605,13 @@ const externalEmbedding = await platform.generateExternalEmbeddingsFromPlainText
 );
 console.log(externalEmbedding.data.template_id);
 
+// Docker provider fallback can request raw vectors from the deployed processor.
+// The deployed instance uses its internal OPENAI_API_KEY.
+const rawVectors = await platform.createExternalEmbeddings({
+  input: ['gallery publication text', 'viewer search query'],
+});
+console.log(rawVectors.data.data[0].embedding);
+
 // Fetch their external library
 const library = await platform.listExternalUserRequests(externalUser, { limit: 12 });
 console.log(library.data.requests.length);
@@ -612,9 +646,9 @@ console.log(externalLibrary.data.requests.map((request) => request.request_id));
 
 Video model support notes:
 - `createVideoFromText` image model keys include: `GPTIMAGE2`, `IMAGEN4`, `SEEDREAM`, `NANOBANANA2`, `NANOBANANAPRO`, `CUSTOM_TEXT_TO_IMAGE`.
-- `createVideoFromText` supports these video models: `RUNWAYML`, `VEO3.1I2V`, `VEO3.1I2VFAST`, `COSMOS3SUPERI2V`, `SEEDANCEI2V` (Seedance 1.5), `KLINGIMGTOVID3PRO`, and `HAPPYHORSEI2V`.
+- `createVideoFromText` supports these video models: `RUNWAYML`, `VEO3.1I2V`, `VEO3.1I2VFAST`, `COSMOS3SUPERI2V`, `SEEDANCEI2V` (Seedance 1.5), `KLINGIMGTOVID3PRO`, `KLINGIMGTOVIDTURBO`, and `HAPPYHORSEI2V`.
 - `createVideoFromText` accepts either a provided outro (`outro_image_url`) or a server-generated CTA outro (`generate_outro_image: true` with `cta_url` for a QR center image, or `outro_cta_image` for a supplied center logo/CTA image). It can also render bottom CTA footer QR cards with `add_footer_animation` and `footer_metadata`; one footer item applies to every generated scene, while multiple items map by scene index.
-- `createVideoFromImageList` supports `RUNWAYML`, `VEO3.1I2V`, `VEO3.1I2VFAST`, `COSMOS3SUPERI2V`, `SEEDANCEI2V`, `KLINGIMGTOVID3PRO`, and `HAPPYHORSEI2V` via `video_model`; if omitted, it defaults to `RUNWAYML`. It also accepts the same `image_model` keys as text-to-video. Use `aspect_ratio: '16:9'` or `'9:16'`; omitted or invalid values fall back to `16:9`.
+- `createVideoFromImageList` supports `RUNWAYML`, `VEO3.1I2V`, `VEO3.1I2VFAST`, `COSMOS3SUPERI2V`, `SEEDANCEI2V`, `KLINGIMGTOVID3PRO`, `KLINGIMGTOVIDTURBO`, and `HAPPYHORSEI2V` via `video_model`; if omitted, it defaults to `RUNWAYML`. It also accepts the same `image_model` keys as text-to-video. Use `aspect_ratio: '16:9'` or `'9:16'`; omitted or invalid values fall back to `16:9`.
 - Text and image-list video creation both accept optional `backingtrack_model` / `backing_track_model` / `backingTrackModel` / `music_provider` / `musicProvider`, `tts_model` / `ttsModel` / `tts_provider` / `ttsProvider`, `speakerOptions` / `speaker_options`, and `inference_model` / `inferenceModel`. The adapter normalizes these to `backingtrack_model`, `tts_model`, `speakerOptions`, and `inference_model` in the request payload. Omit `inference_model` to use the account default; supported request values are `gpt-5.5` and `gemini-3.1-pro`. When `tts_model` is set, Samsar limits assignment to the matching speaker list (`openAISpeakers`, `elevenLabsSpeakers`, or `googleSpeakers`; Google TTS requests should include `googleSpeakerDetails`).
 - `video_model_sub_type` is no longer used by the API and is stripped from text and image-list payloads before sending.
 - `createVideoFromImageList` accepts either a provided outro (`outro_image_url`) or a server-generated CTA outro (`generate_outro_image: true` with `cta_url` for a QR center image, or `outro_cta_image` for a supplied center logo/CTA image). Do not combine the two modes in a single request.
@@ -628,16 +662,31 @@ Video model support notes:
 - Main video methods and external-user methods accept the same generated outro and footer parameters. The API can resolve either internal session ids or external `extreq_...` ids on repeated video routes, so client code can keep using `translateVideo`, `joinVideos`, `addSubtitles`, `removeSubtitles`, `addVideoOutroImage`, `updateVideoOutroImage`, and `updateVideoFooterImage`; the explicit external variants are available when you want to call `/external_users/*` directly. Do not strip the `extreq_` prefix.
 - Completed video status, latest-version, and completed-session list responses expose `has_subtitles` and `result_language` when the session metadata is available.
 - `publishPublication`, `editPublication`, and `revokePublication` manage public feed publications for completed sessions through free `/publications/*` endpoints. They work with account API keys, customer sub-account API keys, and client auth tokens when the session belongs to the authenticated actor.
-- Text-to-video and image-list video pricing use the same per-rendered-second rates for standard express models: `VEO3.1I2V` is 60 credits/sec, `VEO3.1I2VFAST` is 36 credits/sec, `SEEDANCEI2V` is 30 credits/sec, `KLINGIMGTOVID3PRO` is 36 credits/sec, `HAPPYHORSEI2V` is 36 credits/sec, and `RUNWAYML` is 30 credits/sec. Image-list narrator avatar generation adds 4 credits/sec when `add_narrator_avatar` is true; express CTA generation adds 1 credit/sec when `express_cta_generation` is true.
+- Text-to-video and image-list video pricing use the same per-rendered-second rates for standard express models: `VEO3.1I2V` is 60 credits/sec, `VEO3.1I2VFAST` is 36 credits/sec, `COSMOS3SUPERI2V` is 20 credits/sec, `SEEDANCEI2V` is 30 credits/sec, `KLINGIMGTOVID3PRO` is 36 credits/sec, `KLINGIMGTOVIDTURBO` is 36 credits/sec, `HAPPYHORSEI2V` is 36 credits/sec, and `RUNWAYML` is 30 credits/sec. Image-list narrator avatar generation adds 4 credits/sec when `add_narrator_avatar` is true; express CTA generation adds 1 credit/sec when `express_cta_generation` is true.
 - Standard express video models expose a per-second pricing distribution through `EXPRESS_VIDEO_PRICING_DISTRIBUTION_PER_SECOND_BY_MODEL`: pipeline 4, inference 4, image gen/edit 2, speech 2, music 2, effects and lipsync 2, video as the model-specific remainder, and `optionalAddons.express_cta_generation` at 1 credit/sec.
 
 Upcoming `/v2` omni route adapters:
 - `/v2` is additive; `/v1` is not deprecated.
 - `createV2VideoFromText`, `createV2VideoFromImageList`, `assignV2ImageTitle`, `translateV2Video`, `cloneV2Video`, `regenerateV2VideoAvatar`, `updateV2VideoOutroImage`, `updateV2VideoFooterImage`, `addV2VideoOutroImage`, `getV2Status`, `getV2StatusDetailed`, `getV2Credits`, `listV2Requests`, and `createV2Session` call the new omni route surface.
 - Step-controlled video helpers include `createV2StepVideoFromText`, `createV2StepTextToVideo`, `createV2StepVideoFromImage`, `createV2StepImageToVideo`, `getV2StepVideoStatus`, `getV2StepVideoStatusDetailed`, and `processNextV2StepVideo`. They default to 1-step express rendering by sending `auto_render_full_video: true` and `manual_step_stages: []`; pass `{ stepMode: 'two_step' }` or `manual_step_stages: ['ai_video_generation']` to require an explicit second-step approval before image-to-video generation.
+- External inference helpers include `createV2ExternalChatCompletion` for synchronous billed chat/vision inference and `createV2ExternalChatCompletionAsync` plus `getV2ExternalChatCompletionStatus`, `pollV2ExternalChatCompletion`, or `createV2ExternalChatCompletionAndPoll` for long-running polling requests. The assistant-named aliases are `createV2ExternalAssistantCompletionAsync`, `getV2ExternalAssistantCompletionStatus`, `pollV2ExternalAssistantCompletion`, and `createV2ExternalAssistantCompletionAndPoll`. Synchronous helpers reject async polling controls at compile time; use the dedicated async helpers instead. `createV2ExternalModeration` performs no-charge API-key moderation checks, and `listV2ExternalAudioVoices` reads no-charge provider voice catalogs.
 - Programmatic user helpers include `createV2ExternalUser`, `createV2UserRechargeCredits`, `refreshV2UserToken`, `createV2UserAppKey`, `refreshV2UserAppKey`, `getV2UserCredits`, `getV2UserUsageLogs`, and `getV2UserPaymentStatus`.
 - Omit `externalUser` for internal account billing, pass `externalUser` to scope an external user with the account API key, or authenticate the client directly with an external-user auth token/API key. V2 external users can be referenced by `unique_key`; if `unique_key` is omitted during creation, the server uses `external_user_id` as the key.
 - Detailed status adapters return the normal status payload plus a normalized `session` preview shape with `layers`, `audioLayers`, `globalAudioLayers`, and `globalVideos`. Layer timing uses `startTime` and `endTime` so clients can preview generated images, scene clips, and speech before final render completion.
+
+```ts
+const queuedAssistant = await platform.createV2ExternalAssistantCompletionAsync({
+  model: 'gpt-5.6-sol',
+  messages: [{ role: 'user', content: 'Generate a launch theme.' }],
+});
+
+const completedAssistant = await platform.pollV2ExternalAssistantCompletion(
+  queuedAssistant.data.request_id,
+  { pollIntervalMs: 2_000, pollTimeoutMs: 10 * 60 * 1_000 },
+);
+
+console.log(completedAssistant.data.response?.choices);
+```
 
 ```ts
 const v2Video = await platform.createV2VideoFromImageList({
@@ -829,13 +878,48 @@ Ensure `package.json` name/version are set as desired before publishing.
 ## Maintainer Deploy Script
 
 `deploy.sh` publishes the current package to npm using `NPM_TOKEN` from env (or `.env`).
+Commit SDK source changes first: the script requires a clean SDK checkout so the
+npm artifact is reproducible from GitHub.
 
 ```bash
-# publish current version
+# retry an unpublished version already recorded in package.json
 ./deploy.sh
 
 # bump version, then publish
 ./deploy.sh patch
 ./deploy.sh minor
 ./deploy.sh major
+```
+
+Before npm publication, the script verifies every target Git ref, commits the
+version metadata, and pushes the same release commit to the current SDK branch
+and `main`. If either push is unsafe, npm is not changed.
+
+After npm confirms the new version, the script updates the exact `samsar-js`
+version in the six registry-based Samsar service sources (processor, generator,
+audio generator, AI-video layer generator, express-video listener, and
+assistant-query processor), commits only their dependency files, and pushes
+their current branches. It then updates the monorepo setup wizard, runs the
+canonical source sync, and promotes the resulting monorepo commit to both
+`develop` and `main`. The monorepo phase does not build Docker images.
+
+Re-running a partially completed release never creates another version by
+default. Use `RESUME_PUBLISHED_VERSION=1 ./deploy.sh` to finish Git and consumer
+propagation for the version already present on npm.
+
+Standalone Gallery propagation is opt-in because its GitHub push triggers the
+normal Vercel deployment. When enabled, the sibling Gallery checkout is used if
+available; otherwise the script temporarily clones
+`https://github.com/samsarone/Gallery.git`.
+
+Optional release controls:
+
+```bash
+RESUME_PUBLISHED_VERSION=1      # resume an already-published exact version
+SYNC_SAMSAR_GALLERY=1           # opt in to Gallery dependency update/deployment
+GIT_PUSH_SAMSAR_GALLERY=0       # update locally without committing or pushing
+SAMSAR_GALLERY_ROOT=/path/to/samsar-gallery
+SAMSAR_GALLERY_REPOSITORY=https://github.com/samsarone/Gallery.git
+SYNC_SAMSAR_MONOREPO=0          # disable monorepo sync/promotion
+GIT_PUSH_SAMSAR_MONOREPO=0      # sync locally without pushing develop/main
 ```

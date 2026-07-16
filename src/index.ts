@@ -49,6 +49,294 @@ export interface SamsarResult<T> {
   raw: Response;
 }
 
+export interface SamsarApiKeyValidationResponse {
+  valid: boolean;
+  authType?: string;
+  email?: string | null;
+  username?: string | null;
+  displayName?: string | null;
+  remainingCredits?: number;
+  message?: string;
+  [key: string]: unknown;
+}
+
+export interface DeploymentProviderCredentials {
+  samsarApiKey?: string;
+  samsar_api_key?: string;
+  openaiApiKey?: string;
+  openai_api_key?: string;
+  falApiKey?: string;
+  fal_api_key?: string;
+  runwayApiKey?: string;
+  runway_api_key?: string;
+  googleCredentialsJson?: string;
+  google_credentials_json?: string;
+  googleCredentialsJsonB64?: string;
+  google_credentials_json_b64?: string;
+  googleProjectId?: string;
+  google_project_id?: string;
+  validateFalRemotely?: boolean;
+  validate_fal_remotely?: boolean;
+  [key: string]: unknown;
+}
+
+export interface DeploymentProviderValidationResponse {
+  providers: Record<string, {
+    provider?: string;
+    status?: string;
+    ok?: boolean;
+    message?: string;
+    remainingCredits?: number;
+    email?: string | null;
+    [key: string]: unknown;
+  }>;
+  available: {
+    providers: string[];
+    models: string[];
+    actions: string[];
+  };
+  [key: string]: unknown;
+}
+
+export interface DeploymentProviderCapabilitiesResponse {
+  providers: Record<string, {
+    label?: string;
+    models?: string[];
+    actions?: string[];
+    [key: string]: unknown;
+  }>;
+  [key: string]: unknown;
+}
+
+export interface ExternalChatCompletionRequest {
+  model?: InferenceModel;
+  messages: Array<Record<string, unknown>>;
+  stream?: false;
+  async?: boolean;
+  poll?: boolean;
+  response_mode?: 'sync' | 'async' | 'poll' | 'polling' | string;
+  temperature?: number;
+  top_p?: number;
+  max_tokens?: number;
+  response_format?: Record<string, unknown>;
+  provider_options?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export type ExternalChatCompletionSyncRequest = Omit<
+  ExternalChatCompletionRequest,
+  'async' | 'poll' | 'response_mode'
+> & {
+  async?: false;
+  async_mode?: false;
+  asyncMode?: false;
+  poll?: false;
+  polling?: false;
+  response_mode?: 'sync';
+  responseMode?: 'sync';
+};
+
+export interface ExternalChatCompletionResponse {
+  id?: string;
+  object?: string;
+  created?: number;
+  model?: string;
+  choices?: Array<Record<string, unknown>>;
+  usage?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export type ExternalAssistantRequestStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
+
+export interface ExternalChatCompletionAsyncResponse {
+  request_id: string;
+  requestId?: string;
+  status: ExternalAssistantRequestStatus;
+  poll_url?: string;
+  created_at?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+
+export interface ExternalChatCompletionStatusResponse extends ExternalChatCompletionAsyncResponse {
+  response?: ExternalChatCompletionResponse;
+  error?: {
+    message?: string;
+    code?: string | null;
+    status?: number;
+    [key: string]: unknown;
+  };
+  creditsCharged?: number | null;
+  remainingCredits?: number | null;
+}
+
+export interface ExternalAssistantPollingOptions extends SamsarRequestOptions {
+  pollIntervalMs?: number;
+  pollTimeoutMs?: number;
+}
+
+export interface ExternalEmbeddingRequest {
+  input: string | string[];
+  model?: 'text-embedding-3-small';
+  dimensions?: 1536;
+  [key: string]: unknown;
+}
+
+export interface ExternalEmbeddingData {
+  object?: 'embedding' | string;
+  index: number;
+  embedding: number[];
+}
+
+export interface ExternalEmbeddingResponse {
+  object?: 'list' | string;
+  data: ExternalEmbeddingData[];
+  model: string;
+  dimensions: number;
+  usage?: {
+    prompt_tokens?: number;
+    total_tokens?: number;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+export interface ExternalModerationRequest {
+  input: string | unknown[];
+  model?: string;
+  [key: string]: unknown;
+}
+
+export interface ExternalModerationResponse {
+  id?: string;
+  model?: string;
+  results?: Array<Record<string, unknown>>;
+  decision?: {
+    safe?: boolean;
+    reason?: string;
+    categories?: string[];
+    threshold?: number;
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+export interface ExternalMediaRequest {
+  input?: Record<string, unknown>;
+  webhookUrl?: string;
+  webhook_url?: string;
+  [key: string]: unknown;
+}
+
+export interface ExternalMediaResponse {
+  request_id?: string;
+  session_id?: string;
+  sessionID?: string;
+  status?: string;
+  message?: string;
+  status_endpoint?: string;
+  creditsCharged?: number;
+  remainingCredits?: number | null;
+  [key: string]: unknown;
+}
+
+export interface ExternalAudioVoiceCatalog {
+  provider?: string;
+  voices?: Array<Record<string, unknown>>;
+  voiceMap?: Record<string, Record<string, unknown>>;
+  count?: number;
+  source?: string;
+  generatedAt?: string;
+  error?: string;
+  [key: string]: unknown;
+}
+
+export interface ExternalAudioVoicesResponse {
+  providers?: Record<string, ExternalAudioVoiceCatalog>;
+  voicesByProvider?: Record<string, ExternalAudioVoiceCatalog>;
+  providerKeys?: string[];
+  generatedAt?: string;
+  [key: string]: unknown;
+}
+
+export interface ExternalAudioVoicesOptions extends SamsarRequestOptions {
+  languageCode?: string;
+  language_code?: string;
+  refresh?: boolean;
+}
+
+export interface ExternalTextToMusicAudioInput {
+  prompt: string;
+  model?: 'ELEVENLABS_MUSIC' | 'LYRIA3' | 'LYRIA2' | 'ElevenLabs' | 'Lyria 3' | string;
+  music_model?: string;
+  musicModel?: string;
+  music_provider?: string;
+  musicProvider?: string;
+  duration?: number;
+  duration_seconds?: number;
+  durationSeconds?: number;
+  seconds_total?: number;
+  secondsTotal?: number;
+  is_instrumental?: boolean;
+  isInstrumental?: boolean;
+  generation_meta?: Record<string, unknown>;
+  generationMeta?: Record<string, unknown>;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface ExternalAudioStatusResponse {
+  request_id?: string;
+  session_id?: string;
+  status?: string;
+  route_type?: string;
+  external_audio_route?: string;
+  external_audio_stage?: string;
+  model?: string;
+  provider?: string;
+  audio_url?: string;
+  result_url?: string;
+  result_urls?: string[];
+  local_audio_path?: string;
+  message?: string;
+  error?: string;
+  [key: string]: unknown;
+}
+
+export interface ExternalImageToVideoInput extends CreateV2StepImageToVideoInput {}
+
+export interface ExternalVideoToVideoInput {
+  video_url?: string;
+  videoUrl?: string;
+  videoLink?: string;
+  video?: string;
+  video_model?: string | null;
+  videoModel?: string | null;
+  model?: string | null;
+  duration?: number;
+  aspect_ratio?: string;
+  aspectRatio?: string;
+  prompt?: string;
+  audioPrompt?: string;
+  audio_prompt?: string;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface ExternalLipSyncVideoInput extends ExternalVideoToVideoInput {
+  audio_url?: string;
+  audioUrl?: string;
+  audioLink?: string;
+  audio?: string;
+  lip_sync_model?: string | null;
+  lipSyncModel?: string | null;
+}
+
+export interface ExternalSoundEffectVideoInput extends ExternalVideoToVideoInput {
+  sound_effect_model?: string | null;
+  soundEffectModel?: string | null;
+}
+
 export interface FontOptions {
   key?: string;
   font_key?: string;
@@ -273,6 +561,7 @@ export type ImageListToVideoModel =
   | 'COSMOS3SUPERI2V'
   | 'SEEDANCEI2V'
   | 'KLINGIMGTOVID3PRO'
+  | 'KLINGIMGTOVIDTURBO'
   | 'HAPPYHORSEI2V';
 
 export interface ImageListToVideoItem {
@@ -404,6 +693,10 @@ export interface CreateV2StepImageToVideoInput extends Omit<CreateVideoFromImage
   image_url?: string;
   imageUrl?: string;
   image?: string;
+  start_image_url?: string;
+  startImageUrl?: string;
+  start_image?: string;
+  startImage?: string;
 }
 
 export interface TranslateVideoInput {
@@ -784,6 +1077,134 @@ export interface SessionPublicationResponse {
   sessionId?: string;
   session_id?: string;
   ispublishedVideo?: boolean;
+  [key: string]: unknown;
+}
+
+export type GalleryVideoFormat = 'landscape' | 'portrait' | 'square';
+
+export interface GalleryPublicationStats {
+  likes: number;
+  comments: number;
+  shares: number;
+  views: number;
+  [key: string]: unknown;
+}
+
+export interface GalleryPublicationResult {
+  id: string;
+  publicationId?: string;
+  sessionId?: string | null;
+  videoUrl: string;
+  posterUrl?: string;
+  title: string;
+  description: string;
+  originalPrompt?: string;
+  creatorHandle?: string;
+  createdBy?: string | null;
+  tags: string[];
+  aspectRatio?: string | null;
+  createdAt?: string | null;
+  stats: GalleryPublicationStats;
+  viewerHasLiked?: boolean;
+  score?: number | null;
+  recommendationReason?: string | null;
+  [key: string]: unknown;
+}
+
+export interface GallerySearchRequest {
+  query?: string;
+  search_term?: string;
+  limit?: number;
+  format?: GalleryVideoFormat;
+  [key: string]: unknown;
+}
+
+export interface GallerySearchResponse {
+  query: string;
+  items: GalleryPublicationResult[];
+  total: number;
+  [key: string]: unknown;
+}
+
+export interface GalleryRecommendationsRequest {
+  viewer_id?: string;
+  viewerId?: string;
+  publication_id?: string;
+  publicationId?: string;
+  video_id?: string;
+  limit?: number;
+  format?: GalleryVideoFormat;
+  exclude_ids?: string[];
+  [key: string]: unknown;
+}
+
+export interface GalleryRecommendationsResponse {
+  items: GalleryPublicationResult[];
+  reason: 'similar_to_current' | 'based_on_watch_history' | 'popular_now' | string;
+  personalized: boolean;
+  [key: string]: unknown;
+}
+
+export interface GalleryViewEventRequest {
+  publication_id?: string;
+  publicationId?: string;
+  viewer_id?: string;
+  viewerId?: string;
+  event_type?: 'view' | 'progress' | 'complete' | string;
+  eventType?: string;
+  watch_time_ms?: number;
+  watchTimeMs?: number;
+  duration_ms?: number;
+  durationMs?: number;
+  source?: string;
+  metadata?: Record<string, unknown>;
+  [key: string]: unknown;
+}
+
+export interface GalleryViewEventResponse {
+  recorded: boolean;
+  countedView: boolean;
+  uniqueView: boolean;
+  completed: boolean;
+  stats?: Record<string, number>;
+  [key: string]: unknown;
+}
+
+export interface GallerySyncRequest {
+  force?: boolean;
+  [key: string]: unknown;
+}
+
+export interface GallerySyncResponse {
+  status: 'complete' | 'already_running' | 'failed' | string;
+  database?: string;
+  embeddingModel?: string;
+  embeddingVersion?: string;
+  indexed: number;
+  skipped: number;
+  failed: number;
+  totalAvailable?: number;
+  scanned?: number;
+  removed?: number;
+  refreshed?: boolean;
+  stale?: boolean;
+  startedAt?: string;
+  completedAt?: string;
+  lastUpdatedAt?: string | null;
+  nextUpdateAt?: string | null;
+  [key: string]: unknown;
+}
+
+export interface GallerySyncStatusResponse {
+  database: string;
+  embeddingModel: string;
+  embeddingVersion: string;
+  indexedPublications: number;
+  stale?: boolean;
+  refreshIntervalMs?: number;
+  lastUpdatedAt?: string | null;
+  nextUpdateAt?: string | null;
+  state?: Record<string, unknown> | null;
   [key: string]: unknown;
 }
 
@@ -2708,7 +3129,11 @@ function normalizeCreateV2StepImageToVideoInput(
     const imageUrl =
       getTrimmedString(raw.image_url) ??
       getTrimmedString(raw.imageUrl) ??
-      getTrimmedString(raw.image);
+      getTrimmedString(raw.image) ??
+      getTrimmedString(raw.start_image_url) ??
+      getTrimmedString(raw.startImageUrl) ??
+      getTrimmedString(raw.start_image) ??
+      getTrimmedString(raw.startImage);
     if (!imageUrl) {
       throw new Error('image_url or image_urls is required for createV2StepVideoFromImage');
     }
@@ -2718,8 +3143,87 @@ function normalizeCreateV2StepImageToVideoInput(
   delete normalized.image_url;
   delete normalized.imageUrl;
   delete normalized.image;
+  delete normalized.start_image_url;
+  delete normalized.startImageUrl;
+  delete normalized.start_image;
+  delete normalized.startImage;
 
   return normalizeCreateVideoFromImageListInput(normalized as CreateVideoFromImageListInput);
+}
+
+function normalizeExternalImageToVideoInput(input: ExternalImageToVideoInput): CreateVideoFromImageListInput {
+  return normalizeCreateV2StepImageToVideoInput(input);
+}
+
+function normalizeExternalVideoToVideoInput<T extends ExternalVideoToVideoInput>(
+  input: T,
+  context: string,
+  {
+    requiresAudio = false,
+    modelCanonicalName,
+    modelAliases = [],
+  }: {
+    requiresAudio?: boolean;
+    modelCanonicalName?: string;
+    modelAliases?: string[];
+  } = {},
+): T {
+  const raw = input as Record<string, unknown>;
+  const normalized: Record<string, unknown> = { ...input };
+
+  if (raw.video_data !== undefined || raw.videoData !== undefined) {
+    throw new Error(`video_url must be a public http(s) URL for ${context}; raw video data is not accepted`);
+  }
+
+  const videoUrlValue = resolveAliasedInputValue(
+    raw,
+    ['video_url', 'videoUrl', 'videoLink', 'video'],
+    'video_url',
+  );
+  if (videoUrlValue !== undefined) {
+    normalized.video_url = videoUrlValue;
+  }
+
+  const videoUrl = getTrimmedString(normalized.video_url);
+  if (!videoUrl) {
+    throw new Error(`video_url is required for ${context}`);
+  }
+  normalized.video_url = videoUrl;
+
+  if (requiresAudio) {
+    if (raw.audio_data !== undefined || raw.audioData !== undefined) {
+      throw new Error(`audio_url must be a public http(s) URL for ${context}; raw audio data is not accepted`);
+    }
+
+    const audioUrlValue = resolveAliasedInputValue(
+      raw,
+      ['audio_url', 'audioUrl', 'audioLink', 'audio'],
+      'audio_url',
+    );
+    if (audioUrlValue !== undefined) {
+      normalized.audio_url = audioUrlValue;
+    }
+
+    const audioUrl = getTrimmedString(normalized.audio_url);
+    if (!audioUrl) {
+      throw new Error(`audio_url is required for ${context}`);
+    }
+    normalized.audio_url = audioUrl;
+  }
+
+  const aspectRatio = resolveAliasedInputValue(raw, ['aspect_ratio', 'aspectRatio'], 'aspect_ratio');
+  if (aspectRatio !== undefined) {
+    normalized.aspect_ratio = aspectRatio;
+  }
+
+  if (modelCanonicalName && modelAliases.length > 0) {
+    const modelValue = resolveAliasedInputValue(raw, modelAliases, modelCanonicalName);
+    if (modelValue !== undefined) {
+      normalized[modelCanonicalName] = modelValue;
+    }
+  }
+
+  return normalized as T;
 }
 
 function normalizeTranslateVideoInput(
@@ -4791,6 +5295,57 @@ export class SamsarClient {
     return this.revokePublication(input, options);
   }
 
+  /** Search Samsar Gallery publications using semantic, lexical, and engagement ranking. */
+  async searchGallery(
+    payload: GallerySearchRequest,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<GallerySearchResponse>> {
+    return this.postV2<GallerySearchResponse>('gallery/search', payload, options);
+  }
+
+  /** Load contextual or watch-history-personalized Samsar Gallery recommendations. */
+  async getGalleryRecommendations(
+    payload: GalleryRecommendationsRequest = {},
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<GalleryRecommendationsResponse>> {
+    return this.postV2<GalleryRecommendationsResponse>('gallery/recommendations', payload, options);
+  }
+
+  /** Record a deduplicated gallery view, watch-time update, or completed view. */
+  async recordGalleryView(
+    payload: GalleryViewEventRequest,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<GalleryViewEventResponse>> {
+    return this.postV2<GalleryViewEventResponse>('gallery/events/view', payload, options);
+  }
+
+  /** Incrementally synchronize publication embeddings into the SamsarGallery database. */
+  async syncGalleryEmbeddings(
+    payload: GallerySyncRequest = {},
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<GallerySyncResponse>> {
+    return this.postV2<GallerySyncResponse>('gallery/sync', payload, options);
+  }
+
+  /** Refresh changed publication embeddings only when the Gallery index is at least one hour stale. */
+  async updateGalleryPublicationEmbeddings(
+    payload: GallerySyncRequest = {},
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<GallerySyncResponse>> {
+    return this.postV2<GallerySyncResponse>(
+      'gallery/publications/update_embeddings',
+      payload,
+      options,
+    );
+  }
+
+  /** Read the latest Samsar Gallery indexing status. */
+  async getGalleryEmbeddingStatus(
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<GallerySyncStatusResponse>> {
+    return this.getV2<GallerySyncStatusResponse>('gallery/status', options);
+  }
+
   /**
    * Fetch the supported image/video model keys for the text_to_video route.
    * Maps to GET /video/supported_models.
@@ -5520,6 +6075,749 @@ export class SamsarClient {
     return this.getStatus(requestId, { ...options, path: 'image/status' });
   }
 
+  /**
+   * Validate the configured Samsar API key, or a supplied key, against /external/api_key/validate.
+   */
+  async validateSamsarApiKey(
+    apiKey?: string,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<SamsarApiKeyValidationResponse>> {
+    return this.validateV2ExternalSamsarApiKey(apiKey, options);
+  }
+
+  /**
+   * Validate a Samsar Processor API key and return account/credit metadata.
+   */
+  async validateProcessorApiKey(
+    apiKey?: string,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<SamsarApiKeyValidationResponse>> {
+    return this.validateSamsarApiKey(apiKey, options);
+  }
+
+  /**
+   * Validate the configured Samsar API key, or a supplied key, against /v2/external/api_key/validate.
+   */
+  async validateV2ExternalSamsarApiKey(
+    apiKey?: string,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<SamsarApiKeyValidationResponse>> {
+    const headers = apiKey
+      ? { ...(options?.headers ?? {}), Authorization: `Bearer ${apiKey}` }
+      : options?.headers;
+    return this.get<SamsarApiKeyValidationResponse>(this.buildV2Url('external/api_key/validate'), {
+      ...(options ?? {}),
+      headers,
+    });
+  }
+
+  /**
+   * Fetch provider/model/action capabilities used by the deployment onboarding flow.
+   */
+  async getExternalProviderCapabilities(
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<DeploymentProviderCapabilitiesResponse>> {
+    return this.getV2ExternalProviderCapabilities(options);
+  }
+
+  /**
+   * Fetch provider/model/action capabilities from /v2/external/providers/capabilities.
+   */
+  async getV2ExternalProviderCapabilities(
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<DeploymentProviderCapabilitiesResponse>> {
+    return this.get<DeploymentProviderCapabilitiesResponse>(
+      this.buildV2Url('external/providers/capabilities'),
+      options,
+    );
+  }
+
+  /**
+   * Validate onboarding provider credentials without storing secrets in the SDK.
+   */
+  async validateDeploymentProviders(
+    payload: DeploymentProviderCredentials,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<DeploymentProviderValidationResponse>> {
+    return this.validateV2ExternalDeploymentProviders(payload, options);
+  }
+
+  /**
+   * Validate onboarding provider credentials through /v2/external/providers/validate.
+   */
+  async validateV2ExternalDeploymentProviders(
+    payload: DeploymentProviderCredentials,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<DeploymentProviderValidationResponse>> {
+    return this.post<DeploymentProviderValidationResponse>(
+      this.buildV2Url('external/providers/validate'),
+      payload,
+      options,
+    );
+  }
+
+  /**
+   * OpenAI-compatible external chat request billed through Samsar credits.
+   * This calls POST /external/chat.
+   */
+  async createExternalChat(
+    payload: ExternalChatCompletionSyncRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalChatCompletionResponse>> {
+    return this.createV2ExternalChat(payload, options);
+  }
+
+  /**
+   * OpenAI-compatible external chat request billed through Samsar credits.
+   * This calls POST /v2/external/chat.
+   */
+  async createV2ExternalChat(
+    payload: ExternalChatCompletionSyncRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalChatCompletionResponse>> {
+    return this.post<ExternalChatCompletionResponse>(
+      this.buildV2Url('external/chat'),
+      payload,
+      options,
+    );
+  }
+
+  /**
+   * OpenAI-compatible external chat completion billed through Samsar credits.
+   */
+  async createExternalChatCompletion(
+    payload: ExternalChatCompletionSyncRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalChatCompletionResponse>> {
+    return this.createV2ExternalChatCompletion(payload, options);
+  }
+
+  /**
+   * OpenAI-compatible external chat completion billed through Samsar credits.
+   * This calls POST /v2/external/chat/completions.
+   */
+  async createV2ExternalChatCompletion(
+    payload: ExternalChatCompletionSyncRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalChatCompletionResponse>> {
+    return this.post<ExternalChatCompletionResponse>(
+      this.buildV2Url('external/chat/completions'),
+      payload,
+      options,
+    );
+  }
+
+  /**
+   * Queue an external chat/assistant completion and return immediately with a request id.
+   */
+  async createV2ExternalChatCompletionAsync(
+    payload: ExternalChatCompletionRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalChatCompletionAsyncResponse>> {
+    return this.post<ExternalChatCompletionAsyncResponse>(
+      this.buildV2Url('external/chat/completions'),
+      { ...payload, async: true, response_mode: 'polling' },
+      options,
+    );
+  }
+
+  /** Read the latest state of a queued external chat/assistant completion. */
+  async getV2ExternalChatCompletionStatus(
+    requestId: string,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalChatCompletionStatusResponse>> {
+    const normalizedRequestId = String(requestId || '').trim();
+    if (!normalizedRequestId) {
+      throw new Error('requestId is required');
+    }
+    return this.get<ExternalChatCompletionStatusResponse>(
+      this.buildV2Url('external/chat/status'),
+      {
+        ...(options ?? {}),
+        query: { ...(options?.query ?? {}), request_id: normalizedRequestId },
+      },
+    );
+  }
+
+  /**
+   * Poll a queued external chat/assistant completion until it completes, fails, or reaches its deadline.
+   */
+  async pollV2ExternalChatCompletion(
+    requestId: string,
+    options?: ExternalAssistantPollingOptions,
+  ): Promise<SamsarResult<ExternalChatCompletionStatusResponse>> {
+    const normalizedRequestId = String(requestId || '').trim();
+    if (!normalizedRequestId) {
+      throw new Error('requestId is required');
+    }
+
+    const pollIntervalMs = clampPositiveInteger(options?.pollIntervalMs, 2000, 250, 30000);
+    const pollTimeoutMs = clampPositiveInteger(options?.pollTimeoutMs, 10 * 60 * 1000, 1000, 30 * 60 * 1000);
+    const { pollIntervalMs: _pollIntervalMs, pollTimeoutMs: _pollTimeoutMs, ...requestOptions } = options ?? {};
+    const startedAt = Date.now();
+    let lastTransientError: unknown = null;
+
+    while (Date.now() - startedAt < pollTimeoutMs) {
+      if (requestOptions.signal?.aborted) {
+        throw new SamsarRequestError('External assistant polling was aborted', {
+          url: this.buildV2Url('external/chat/status'),
+          headers: {},
+        });
+      }
+
+      try {
+        const result = await this.getV2ExternalChatCompletionStatus(
+          normalizedRequestId,
+          requestOptions,
+        );
+        const status = String(result.data?.status || '').toUpperCase();
+        if (status === 'COMPLETED') {
+          return result;
+        }
+        if (status === 'FAILED') {
+          throw new SamsarRequestError(
+            result.data?.error?.message || 'External assistant request failed',
+            {
+              status: result.data?.error?.status || 500,
+              body: result.data,
+              headers: result.headers,
+              url: result.data?.poll_url || this.buildV2Url('external/chat/status'),
+              creditsCharged: result.creditsCharged,
+              creditsRemaining: result.creditsRemaining,
+            },
+          );
+        }
+        lastTransientError = null;
+      } catch (error) {
+        if (error instanceof SamsarRequestError) {
+          const terminalStatus = String(
+            (error.body as ExternalChatCompletionStatusResponse | undefined)?.status || '',
+          ).toUpperCase();
+          if (
+            terminalStatus === 'FAILED' ||
+            (error.status !== undefined &&
+              error.status < 500 &&
+              error.status !== 408 &&
+              error.status !== 429)
+          ) {
+            throw error;
+          }
+        }
+        lastTransientError = error;
+      }
+
+      await waitForPollingInterval(pollIntervalMs, requestOptions.signal);
+    }
+
+    const detail = lastTransientError instanceof Error
+      ? ` Last polling error: ${lastTransientError.message}`
+      : '';
+    throw new SamsarRequestError(
+      `External assistant polling timed out after ${pollTimeoutMs}ms.${detail}`,
+      {
+        status: 504,
+        body: { request_id: normalizedRequestId, status: 'PROCESSING' },
+        headers: {},
+        url: this.buildV2Url('external/chat/status'),
+      },
+    );
+  }
+
+  /** Queue and poll an external chat completion using short-lived HTTP requests. */
+  async createV2ExternalChatCompletionAndPoll(
+    payload: ExternalChatCompletionRequest,
+    options?: ExternalAssistantPollingOptions,
+  ): Promise<SamsarResult<ExternalChatCompletionStatusResponse>> {
+    const queued = await this.createV2ExternalChatCompletionAsync(payload, options);
+    return this.pollV2ExternalChatCompletion(queued.data.request_id, options);
+  }
+
+  /** Assistant-named alias for createV2ExternalChatCompletionAsync. */
+  async createV2ExternalAssistantCompletionAsync(
+    payload: ExternalChatCompletionRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalChatCompletionAsyncResponse>> {
+    return this.createV2ExternalChatCompletionAsync(payload, options);
+  }
+
+  /** Assistant-named alias for getV2ExternalChatCompletionStatus. */
+  async getV2ExternalAssistantCompletionStatus(
+    requestId: string,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalChatCompletionStatusResponse>> {
+    return this.getV2ExternalChatCompletionStatus(requestId, options);
+  }
+
+  /** Assistant-named alias for pollV2ExternalChatCompletion. */
+  async pollV2ExternalAssistantCompletion(
+    requestId: string,
+    options?: ExternalAssistantPollingOptions,
+  ): Promise<SamsarResult<ExternalChatCompletionStatusResponse>> {
+    return this.pollV2ExternalChatCompletion(requestId, options);
+  }
+
+  /** Assistant-named alias for createV2ExternalChatCompletionAndPoll. */
+  async createV2ExternalAssistantCompletionAndPoll(
+    payload: ExternalChatCompletionRequest,
+    options?: ExternalAssistantPollingOptions,
+  ): Promise<SamsarResult<ExternalChatCompletionStatusResponse>> {
+    return this.createV2ExternalChatCompletionAndPoll(payload, options);
+  }
+
+  /**
+   * Create raw embedding vectors through the deployed Samsar processor.
+   * This calls POST /v2/external/embeddings and is intended for Docker provider fallback.
+   */
+  async createExternalEmbeddings(
+    payload: ExternalEmbeddingRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalEmbeddingResponse>> {
+    return this.post<ExternalEmbeddingResponse>(
+      this.buildV2Url('external/embeddings'),
+      payload,
+      options,
+    );
+  }
+
+  /**
+   * OpenAI-compatible external moderation. This endpoint validates content through Samsar
+   * API-key auth and does not charge credits.
+   */
+  async createExternalModeration(
+    payload: ExternalModerationRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalModerationResponse>> {
+    return this.createV2ExternalModeration(payload, options);
+  }
+
+  /**
+   * OpenAI-compatible external moderation. This calls POST /v2/external/moderation
+   * and does not charge credits.
+   */
+  async createV2ExternalModeration(
+    payload: ExternalModerationRequest,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalModerationResponse>> {
+    return this.post<ExternalModerationResponse>(
+      this.buildV2Url('external/moderation'),
+      payload,
+      options,
+    );
+  }
+
+  /**
+   * Low-level wrapper for POST /v2/external/image/{path}. The external image surface mirrors
+   * the existing image API paths, for example assign_title, enhance, remove_branding,
+   * add_image_set, create_rollup_banner, and receipt_templates/query.
+   */
+  async requestExternalImage<T = ExternalMediaResponse>(
+    path: string,
+    payload: ExternalMediaRequest = {},
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<T>> {
+    return this.requestV2ExternalImage<T>(path, payload, options);
+  }
+
+  /**
+   * Low-level wrapper for POST /v2/external/image/{path}.
+   */
+  async requestV2ExternalImage<T = ExternalMediaResponse>(
+    path: string,
+    payload: ExternalMediaRequest = {},
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<T>> {
+    return this.post<T>(
+      this.buildV2Url(`external/image/${normalizeExternalRoutePath(path)}`),
+      payload,
+      options,
+    );
+  }
+
+  /**
+   * Retrieve status for an async /external/image request.
+   */
+  async getExternalImageStatus(
+    requestId: string,
+    options?: SamsarRequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<GlobalStatusResponse>> {
+    return this.getV2ExternalImageStatus(requestId, options);
+  }
+
+  /**
+   * Retrieve status for an async /v2/external/image request.
+   */
+  async getV2ExternalImageStatus(
+    requestId: string,
+    options?: SamsarRequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<GlobalStatusResponse>> {
+    return this.getStatus(requestId, {
+      ...options,
+      path: this.buildV2Url('external/image/status'),
+    });
+  }
+
+  /**
+   * Low-level wrapper for POST /v2/external/video/{path}. Public external video routes include
+   * text_to_video, image_to_video, lip_sync, sound_effect, status, and status_detailed.
+   */
+  async requestExternalVideo<T = ExternalMediaResponse>(
+    path: string,
+    payload: ExternalMediaRequest = {},
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<T>> {
+    return this.requestV2ExternalVideo<T>(path, payload, options);
+  }
+
+  /**
+   * Low-level wrapper for POST /v2/external/video/{path}.
+   */
+  async requestV2ExternalVideo<T = ExternalMediaResponse>(
+    path: string,
+    payload: ExternalMediaRequest = {},
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<T>> {
+    return this.post<T>(
+      this.buildV2Url(`external/video/${normalizeExternalVideoRoutePath(path)}`),
+      payload,
+      options,
+    );
+  }
+
+  /**
+   * Create a central /v2/external/video text-to-video request using the same input shape as createVideoFromText.
+   */
+  async createExternalVideoRequestFromText(
+    input: CreateVideoFromTextInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalMediaResponse>> {
+    return this.createV2ExternalVideoRequestFromText(input, options);
+  }
+
+  /**
+   * Create a central /v2/external/video text-to-video request using the same input shape as createVideoFromText.
+   */
+  async createV2ExternalVideoRequestFromText(
+    input: CreateVideoFromTextInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalMediaResponse>> {
+    const normalizedInput = normalizeCreateVideoFromTextInput(input);
+    return this.requestV2ExternalVideo<ExternalMediaResponse>(
+      'text_to_video',
+      {
+        input: normalizedInput,
+        webhookUrl: options?.webhookUrl,
+      },
+      options,
+    );
+  }
+
+  /**
+   * Create a central /v2/external/video image-to-video request using the same input shape as createVideoFromImageList.
+   */
+  async createExternalVideoRequestFromImageList(
+    input: CreateVideoFromImageListInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalMediaResponse>> {
+    return this.createV2ExternalVideoRequestFromImageList(input, options);
+  }
+
+  /**
+   * Create a central /v2/external/video image-to-video request using the same input shape as createVideoFromImageList.
+   */
+  async createV2ExternalVideoRequestFromImageList(
+    input: CreateVideoFromImageListInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalMediaResponse>> {
+    const normalizedInput = normalizeCreateVideoFromImageListInput(input);
+    return this.requestV2ExternalVideo<ExternalMediaResponse>(
+      'image_to_video',
+      {
+        input: normalizedInput,
+        webhookUrl: options?.webhookUrl,
+      },
+      options,
+    );
+  }
+
+  /**
+   * Create a central /v2/external/video image-to-video request from either image_url or image_urls.
+   */
+  async createExternalVideoRequestFromImage(
+    input: ExternalImageToVideoInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalMediaResponse>> {
+    return this.createV2ExternalVideoRequestFromImage(input, options);
+  }
+
+  /**
+   * Create a central /v2/external/video image-to-video request from either image_url or image_urls.
+   */
+  async createV2ExternalVideoRequestFromImage(
+    input: ExternalImageToVideoInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalMediaResponse>> {
+    const normalizedInput = normalizeExternalImageToVideoInput(input);
+    return this.requestV2ExternalVideo<ExternalMediaResponse>(
+      'image_to_video',
+      {
+        input: normalizedInput,
+        webhookUrl: options?.webhookUrl,
+      },
+      options,
+    );
+  }
+
+  /**
+   * Create a central /v2/external/video lip-sync request using public video_url and audio_url inputs.
+   */
+  async createExternalLipSyncVideo(
+    input: ExternalLipSyncVideoInput,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalMediaResponse>> {
+    return this.createV2ExternalLipSyncVideo(input, options);
+  }
+
+  /**
+   * Create a central /v2/external/video lip-sync request using public video_url and audio_url inputs.
+   */
+  async createV2ExternalLipSyncVideo(
+    input: ExternalLipSyncVideoInput,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalMediaResponse>> {
+    const normalizedInput = normalizeExternalVideoToVideoInput(input, 'createV2ExternalLipSyncVideo', {
+      requiresAudio: true,
+      modelCanonicalName: 'lip_sync_model',
+      modelAliases: ['lip_sync_model', 'lipSyncModel', 'video_model', 'videoModel', 'model'],
+    });
+    return this.requestV2ExternalVideo<ExternalMediaResponse>(
+      'lip_sync',
+      { input: normalizedInput },
+      options,
+    );
+  }
+
+  /**
+   * Create a central /v2/external/video sound-effect request using a public video_url input.
+   */
+  async createExternalSoundEffectVideo(
+    input: ExternalSoundEffectVideoInput,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalMediaResponse>> {
+    return this.createV2ExternalSoundEffectVideo(input, options);
+  }
+
+  /**
+   * Create a central /v2/external/video sound-effect request using a public video_url input.
+   */
+  async createV2ExternalSoundEffectVideo(
+    input: ExternalSoundEffectVideoInput,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalMediaResponse>> {
+    const normalizedInput = normalizeExternalVideoToVideoInput(input, 'createV2ExternalSoundEffectVideo', {
+      modelCanonicalName: 'sound_effect_model',
+      modelAliases: ['sound_effect_model', 'soundEffectModel', 'video_model', 'videoModel', 'model'],
+    });
+    return this.requestV2ExternalVideo<ExternalMediaResponse>(
+      'sound_effect',
+      { input: normalizedInput },
+      options,
+    );
+  }
+
+  /**
+   * Retrieve status for an async /external/video request.
+   */
+  async getExternalVideoStatus(
+    requestId: string,
+    options?: SamsarRequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<GlobalStatusResponse>> {
+    return this.getV2ExternalVideoStatus(requestId, options);
+  }
+
+  /**
+   * Retrieve status for an async /v2/external/video request.
+   */
+  async getV2ExternalVideoStatus(
+    requestId: string,
+    options?: SamsarRequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<GlobalStatusResponse>> {
+    return this.getStatus(requestId, {
+      ...options,
+      path: this.buildV2Url('external/video/status'),
+    });
+  }
+
+  /**
+   * Retrieve detailed status for an async /external/video request.
+   */
+  async getExternalVideoStatusDetailed(
+    requestId: string,
+    options?: SamsarRequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<GlobalStatusDetailedResponse>> {
+    return this.getV2ExternalVideoStatusDetailed(requestId, options);
+  }
+
+  async getExternalVideoDetailedStatus(
+    requestId: string,
+    options?: SamsarRequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<GlobalStatusDetailedResponse>> {
+    return this.getV2ExternalVideoStatusDetailed(requestId, options);
+  }
+
+  /**
+   * Retrieve detailed status for an async /v2/external/video request.
+   */
+  async getV2ExternalVideoStatusDetailed(
+    requestId: string,
+    options?: SamsarRequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<GlobalStatusDetailedResponse>> {
+    const response = await this.getStatus(requestId, {
+      ...options,
+      path: this.buildV2Url('external/video/status_detailed'),
+    });
+    return response as SamsarResult<GlobalStatusDetailedResponse>;
+  }
+
+  async getV2ExternalVideoDetailedStatus(
+    requestId: string,
+    options?: SamsarRequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<GlobalStatusDetailedResponse>> {
+    return this.getV2ExternalVideoStatusDetailed(requestId, options);
+  }
+
+  /**
+   * Low-level wrapper for POST /v2/external/audio. The generic route dispatches by route_type
+   * and currently supports text_to_music.
+   */
+  async requestExternalAudio<T = ExternalMediaResponse>(
+    payload: ExternalMediaRequest = {},
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<T>> {
+    return this.requestV2ExternalAudio<T>(payload, options);
+  }
+
+  /**
+   * Low-level wrapper for POST /v2/external/audio. The generic route dispatches by route_type
+   * and currently supports text_to_music.
+   */
+  async requestV2ExternalAudio<T = ExternalMediaResponse>(
+    payload: ExternalMediaRequest = {},
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<T>> {
+    return this.post<T>(this.buildV2Url('external/audio'), payload, options);
+  }
+
+  /**
+   * Low-level wrapper for POST /v2/external/audio/{path}.
+   */
+  async requestExternalAudioRoute<T = ExternalMediaResponse>(
+    path: string,
+    payload: ExternalMediaRequest = {},
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<T>> {
+    return this.requestV2ExternalAudioRoute<T>(path, payload, options);
+  }
+
+  /**
+   * Low-level wrapper for POST /v2/external/audio/{path}.
+   */
+  async requestV2ExternalAudioRoute<T = ExternalMediaResponse>(
+    path: string,
+    payload: ExternalMediaRequest = {},
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<T>> {
+    return this.post<T>(
+      this.buildV2Url(`external/audio/${normalizeExternalAudioRoutePath(path)}`),
+      payload,
+      options,
+    );
+  }
+
+  /**
+   * Create a hosted external text-to-music request. This calls POST /v2/external/audio/text_to_music.
+   */
+  async createExternalTextToMusicAudio(
+    input: ExternalTextToMusicAudioInput,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalMediaResponse>> {
+    return this.createV2ExternalTextToMusicAudio(input, options);
+  }
+
+  /**
+   * Create a hosted external text-to-music request. This calls POST /v2/external/audio/text_to_music.
+   */
+  async createV2ExternalTextToMusicAudio(
+    input: ExternalTextToMusicAudioInput,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalMediaResponse>> {
+    return this.requestV2ExternalAudioRoute<ExternalMediaResponse>(
+      'text_to_music',
+      { input },
+      options,
+    );
+  }
+
+  /**
+   * Retrieve status for an async /external/audio request.
+   */
+  async getExternalAudioStatus(
+    requestId: string,
+    options?: SamsarRequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<ExternalAudioStatusResponse>> {
+    return this.getV2ExternalAudioStatus(requestId, options);
+  }
+
+  /**
+   * Retrieve status for an async /v2/external/audio request.
+   */
+  async getV2ExternalAudioStatus(
+    requestId: string,
+    options?: SamsarRequestOptions & { queryParams?: QueryParams },
+  ): Promise<SamsarResult<ExternalAudioStatusResponse>> {
+    const response = await this.getStatus(requestId, {
+      ...options,
+      path: this.buildV2Url('external/audio/status'),
+    });
+    return response as SamsarResult<ExternalAudioStatusResponse>;
+  }
+
+  /**
+   * List external audio voice catalogs keyed by provider. This calls
+   * GET /v2/external/audio/voices and does not charge credits.
+   */
+  async listExternalAudioVoices(
+    options?: ExternalAudioVoicesOptions,
+  ): Promise<SamsarResult<ExternalAudioVoicesResponse>> {
+    return this.listV2ExternalAudioVoices(options);
+  }
+
+  /**
+   * List external audio voice catalogs keyed by provider. This calls
+   * GET /v2/external/audio/voices and does not charge credits.
+   */
+  async listV2ExternalAudioVoices(
+    options?: ExternalAudioVoicesOptions,
+  ): Promise<SamsarResult<ExternalAudioVoicesResponse>> {
+    const {
+      languageCode,
+      language_code,
+      refresh,
+      query,
+      ...requestOptions
+    } = options ?? {};
+    return this.get<ExternalAudioVoicesResponse>(
+      this.buildV2Url('external/audio/voices'),
+      {
+        ...requestOptions,
+        query: {
+          ...(query ?? {}),
+          languageCode: languageCode ?? language_code,
+          refresh,
+        },
+      },
+    );
+  }
+
   private async get<T>(path: string, options?: SamsarRequestOptions): Promise<SamsarResult<T>> {
     return this.request<T>(path, { ...(options ?? {}), method: 'GET' });
   }
@@ -5733,8 +7031,68 @@ export class SamsarClient {
   }
 }
 
+function clampPositiveInteger(
+  value: unknown,
+  fallback: number,
+  minimum: number,
+  maximum: number,
+): number {
+  const parsed = Number(value);
+  const normalized = Number.isFinite(parsed) && parsed > 0
+    ? Math.floor(parsed)
+    : fallback;
+  return Math.min(maximum, Math.max(minimum, normalized));
+}
+
+function waitForPollingInterval(delayMs: number, signal?: AbortSignal): Promise<void> {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(new Error('Polling aborted'));
+      return;
+    }
+
+    const onAbort = () => {
+      clearTimeout(timeoutId);
+      signal?.removeEventListener('abort', onAbort);
+      reject(new Error('Polling aborted'));
+    };
+    const timeoutId = setTimeout(() => {
+      signal?.removeEventListener('abort', onAbort);
+      resolve();
+    }, delayMs);
+    signal?.addEventListener('abort', onAbort, { once: true });
+  });
+}
+
 function trimTrailingSlash(url: string): string {
   return url.replace(/\/+$/, '');
+}
+
+function normalizeExternalRoutePath(path: string): string {
+  const cleanedPath = String(path || '').trim().replace(/^\/+|\/+$/g, '');
+  if (!cleanedPath) {
+    throw new Error('external route path is required');
+  }
+  return cleanedPath;
+}
+
+function normalizeExternalVideoRoutePath(path: string): string {
+  const cleanedPath = normalizeExternalRoutePath(path);
+  if (cleanedPath === 'image_list_to_video') {
+    return 'image_to_video';
+  }
+  if (cleanedPath === 'text_to_sound_effect') {
+    return 'sound_effect';
+  }
+  return cleanedPath;
+}
+
+function normalizeExternalAudioRoutePath(path: string): string {
+  const cleanedPath = normalizeExternalRoutePath(path);
+  if (cleanedPath === 'music' || cleanedPath === 'generate_music') {
+    return 'text_to_music';
+  }
+  return cleanedPath;
 }
 
 function buildAssignImageTitleBody(payload: AssignImageTitleRequest | FormData): Record<string, unknown> | FormData {

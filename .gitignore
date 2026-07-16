@@ -7,6 +7,7 @@ samsar-js-dist/
 .env
 .env.*
 !.env.example
+.npmrc
 
 *.log
 npm-debug.log*
