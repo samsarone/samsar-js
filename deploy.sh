@@ -121,16 +121,8 @@ repair_deploy_ownership() {
 }
 
 if [[ "${EUID}" -eq 0 && "${ALLOW_SUDO_DEPLOY:-0}" != "1" ]]; then
-  if [[ -z "${SUDO_USER:-}" || "${SUDO_USER}" == "root" ]]; then
-    echo "Do not run deploy.sh directly as root. Run it as your normal user, or with sudo from your user account." >&2
-    exit 1
-  fi
-
-  SUDO_GROUP="$(id -gn "${SUDO_USER}" 2>/dev/null || echo staff)"
-  repair_deploy_ownership "${SUDO_USER}" "${SUDO_GROUP}"
-
-  echo "Continuing deploy as ${SUDO_USER}..."
-  exec sudo -E -u "${SUDO_USER}" -H bash "${ROOT_DIR}/deploy.sh" "$@"
+  echo "Do not run deploy.sh as root. Run it directly as the repository owner." >&2
+  exit 1
 fi
 
 BUMP_LEVEL="${1:-none}"
@@ -285,6 +277,7 @@ preflight_explicit_ref_push() {
   local branch_name="$3"
   local label="$4"
   local require_remote_branch="${5:-1}"
+  local allow_local_ahead="${6:-1}"
   local current_branch upstream_ref local_ahead remote_ahead remote_ref branch_status
 
   current_branch="$(git -C "${repo_dir}" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
@@ -322,6 +315,10 @@ preflight_explicit_ref_push() {
     fi
     if [[ "${remote_ahead}" -gt 0 ]]; then
       echo "${label} is behind ${remote_name}/${branch_name} by ${remote_ahead} commit(s)." >&2
+      return 1
+    fi
+    if [[ "${allow_local_ahead}" != "1" && "${local_ahead}" -gt 0 ]]; then
+      echo "${label} is ahead of ${remote_name}/${branch_name} by ${local_ahead} unrelated commit(s)." >&2
       return 1
     fi
   elif [[ "${branch_status}" -eq 1 && "${require_remote_branch}" != "1" ]]; then
@@ -496,8 +493,13 @@ preflight_samsar_one_targets() {
     for root in "${candidate_roots[@]-}"; do
       trimmed_file="${root#"${root%%[![:space:]]*}"}"
       trimmed_file="${trimmed_file%"${trimmed_file##*[![:space:]]}"}"
-      if [[ ! -d "${trimmed_file}" ]] || ! root_declares_registry_dependency "${trimmed_file}"; then
-        continue
+      if [[ ! -d "${trimmed_file}" ]]; then
+        echo "Required canonical consumer is missing: ${trimmed_file}" >&2
+        return 1
+      fi
+      if ! root_declares_registry_dependency "${trimmed_file}"; then
+        echo "Required canonical consumer does not declare ${PACKAGE_NAME}: ${trimmed_file}" >&2
+        return 1
       fi
       repo_root="$(git -C "${trimmed_file}" rev-parse --show-toplevel 2>/dev/null || true)"
       if [[ -z "${repo_root}" ]]; then
@@ -512,8 +514,12 @@ preflight_samsar_one_targets() {
     for file in "${package_files[@]-}"; do
       trimmed_file="${file#"${file%%[![:space:]]*}"}"
       trimmed_file="${trimmed_file%"${trimmed_file##*[![:space:]]}"}"
-      if [[ ! -f "${trimmed_file}" ]]; then
+      if [[ -z "${trimmed_file}" ]]; then
         continue
+      fi
+      if [[ ! -f "${trimmed_file}" ]]; then
+        echo "Explicit consumer package is missing: ${trimmed_file}" >&2
+        return 1
       fi
       repo_root="$(git -C "$(dirname "${trimmed_file}")" rev-parse --show-toplevel 2>/dev/null || true)"
       if [[ -z "${repo_root}" ]]; then
@@ -526,30 +532,30 @@ preflight_samsar_one_targets() {
     done
 
     for repo_root in "${repo_roots[@]-}"; do
-      if ! git -C "${repo_root}" diff --cached --quiet; then
-        echo "Canonical consumer has staged changes: ${repo_root}" >&2
-        echo "Unstage them before publishing; unrelated unstaged files are allowed." >&2
-        return 1
-      fi
+      require_clean_repo "${repo_root}" "Canonical consumer ${repo_root}"
       current_branch="$(git -C "${repo_root}" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
       preflight_explicit_ref_push "${repo_root}" "${SAMSAR_ONE_GIT_REMOTE}" \
-        "${current_branch}" "canonical consumer ${repo_root}" 1
+        "${current_branch}" "canonical consumer ${repo_root}" 1 0
     done
   fi
 
   if [[ "${SYNC_SAMSAR_GALLERY}" == "1" && "${GIT_PUSH_SAMSAR_GALLERY}" == "1" ]]; then
     current_branch="$(git -C "${SAMSAR_GALLERY_REPO_ROOT}" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
     preflight_explicit_ref_push "${SAMSAR_GALLERY_REPO_ROOT}" "${SAMSAR_GALLERY_GIT_REMOTE}" \
-      "${current_branch}" "Samsar Gallery" 1
+      "${current_branch}" "Samsar Gallery" 1 0
   fi
 }
 
 preflight_samsar_monorepo() {
-  local current_branch
+  local current_branch local_main remote_main
 
   if [[ "${SYNC_SAMSAR_MONOREPO}" != "1" ]]; then
     echo "Skipping Samsar monorepo propagation (SYNC_SAMSAR_MONOREPO=${SYNC_SAMSAR_MONOREPO})."
     return
+  fi
+  if [[ "${GIT_PUSH_SAMSAR_MONOREPO}" == "1" && "${GIT_PUSH_SAMSAR_ONE}" != "1" ]]; then
+    echo "Monorepo promotion requires canonical source pushes (GIT_PUSH_SAMSAR_ONE=1)." >&2
+    return 1
   fi
   if [[ ! -f "${SAMSAR_MONOREPO_SYNC_SCRIPT}" ]]; then
     echo "Samsar monorepo sync script is missing: ${SAMSAR_MONOREPO_SYNC_SCRIPT}" >&2
@@ -570,9 +576,15 @@ preflight_samsar_monorepo() {
 
   if [[ "${GIT_PUSH_SAMSAR_MONOREPO}" == "1" ]]; then
     preflight_explicit_ref_push "${SAMSAR_MONOREPO_ROOT}" "${SAMSAR_MONOREPO_GIT_REMOTE}" \
-      "${SAMSAR_MONOREPO_DEVELOP_BRANCH}" "Samsar monorepo" 1
+      "${SAMSAR_MONOREPO_DEVELOP_BRANCH}" "Samsar monorepo" 1 0
     preflight_promotion_ref "${SAMSAR_MONOREPO_ROOT}" "${SAMSAR_MONOREPO_GIT_REMOTE}" \
       "${SAMSAR_MONOREPO_MAIN_BRANCH}" HEAD "Samsar monorepo develop"
+    local_main="$(git -C "${SAMSAR_MONOREPO_ROOT}" rev-parse "refs/heads/${SAMSAR_MONOREPO_MAIN_BRANCH}" 2>/dev/null || true)"
+    remote_main="$(git -C "${SAMSAR_MONOREPO_ROOT}" rev-parse "refs/remotes/${SAMSAR_MONOREPO_GIT_REMOTE}/${SAMSAR_MONOREPO_MAIN_BRANCH}")"
+    if [[ -z "${local_main}" || "${local_main}" != "${remote_main}" ]]; then
+      echo "Local monorepo ${SAMSAR_MONOREPO_MAIN_BRANCH} must exactly match ${SAMSAR_MONOREPO_GIT_REMOTE}/${SAMSAR_MONOREPO_MAIN_BRANCH}." >&2
+      return 1
+    fi
   fi
 }
 
