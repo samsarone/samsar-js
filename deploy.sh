@@ -153,7 +153,6 @@ GIT_PUSH_SAMSAR_MONOREPO="${GIT_PUSH_SAMSAR_MONOREPO:-1}"
 SAMSAR_MONOREPO_ROOT="${SAMSAR_MONOREPO_ROOT:-${ROOT_DIR}/../samsar}"
 SAMSAR_MONOREPO_SYNC_SCRIPT="${SAMSAR_MONOREPO_SYNC_SCRIPT:-${ROOT_DIR}/../scripts/sync-projects.sh}"
 SAMSAR_MONOREPO_GIT_REMOTE="${SAMSAR_MONOREPO_GIT_REMOTE:-origin}"
-SAMSAR_MONOREPO_DEVELOP_BRANCH="${SAMSAR_MONOREPO_DEVELOP_BRANCH:-develop}"
 SAMSAR_MONOREPO_MAIN_BRANCH="${SAMSAR_MONOREPO_MAIN_BRANCH:-main}"
 SAMSAR_MONOREPO_COMMIT_MESSAGE="${SAMSAR_MONOREPO_COMMIT_MESSAGE:-}"
 
@@ -332,39 +331,6 @@ preflight_explicit_ref_push() {
     "HEAD:refs/heads/${branch_name}"
 }
 
-preflight_promotion_ref() {
-  local repo_dir="$1"
-  local remote_name="$2"
-  local target_branch="$3"
-  local commitish="$4"
-  local label="$5"
-  local remote_ref branch_status=0
-
-  if ! git -C "${repo_dir}" remote get-url "${remote_name}" >/dev/null 2>&1; then
-    echo "${label} git remote is not configured: ${remote_name}" >&2
-    return 1
-  fi
-
-  remote_branch_exists "${repo_dir}" "${remote_name}" "${target_branch}" || branch_status=$?
-  if [[ "${branch_status}" -ne 0 ]]; then
-    if [[ "${branch_status}" -eq 1 ]]; then
-      echo "${label} target branch does not exist: ${remote_name}/${target_branch}" >&2
-    fi
-    return 1
-  fi
-
-  remote_ref="refs/remotes/${remote_name}/${target_branch}"
-  git -C "${repo_dir}" fetch "${remote_name}" \
-    "+refs/heads/${target_branch}:${remote_ref}"
-  if ! git -C "${repo_dir}" merge-base --is-ancestor "${remote_ref}" "${commitish}"; then
-    echo "${remote_name}/${target_branch} is not an ancestor of ${label} ${commitish}; refusing a non-fast-forward promotion." >&2
-    return 1
-  fi
-
-  git -C "${repo_dir}" push --dry-run "${remote_name}" \
-    "${commitish}:refs/heads/${target_branch}"
-}
-
 push_current_branch_explicit() {
   local repo_dir="$1"
   local remote_name="$2"
@@ -539,14 +505,14 @@ preflight_samsar_one_targets() {
 }
 
 preflight_samsar_monorepo() {
-  local current_branch local_main remote_main
+  local current_branch
 
   if [[ "${SYNC_SAMSAR_MONOREPO}" != "1" ]]; then
     echo "Skipping Samsar monorepo propagation (SYNC_SAMSAR_MONOREPO=${SYNC_SAMSAR_MONOREPO})."
     return
   fi
   if [[ "${GIT_PUSH_SAMSAR_MONOREPO}" == "1" && "${GIT_PUSH_SAMSAR_ONE}" != "1" ]]; then
-    echo "Monorepo promotion requires canonical source pushes (GIT_PUSH_SAMSAR_ONE=1)." >&2
+    echo "Monorepo push requires canonical source pushes (GIT_PUSH_SAMSAR_ONE=1)." >&2
     return 1
   fi
   if [[ ! -f "${SAMSAR_MONOREPO_SYNC_SCRIPT}" ]]; then
@@ -561,22 +527,14 @@ preflight_samsar_monorepo() {
   fi
 
   current_branch="$(git -C "${SAMSAR_MONOREPO_ROOT}" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
-  if [[ "${current_branch}" != "${SAMSAR_MONOREPO_DEVELOP_BRANCH}" ]]; then
-    echo "Samsar monorepo must be on ${SAMSAR_MONOREPO_DEVELOP_BRANCH}; current branch is ${current_branch:-detached}." >&2
+  if [[ "${current_branch}" != "${SAMSAR_MONOREPO_MAIN_BRANCH}" ]]; then
+    echo "Samsar monorepo must be on ${SAMSAR_MONOREPO_MAIN_BRANCH}; current branch is ${current_branch:-detached}." >&2
     return 1
   fi
 
   if [[ "${GIT_PUSH_SAMSAR_MONOREPO}" == "1" ]]; then
     preflight_explicit_ref_push "${SAMSAR_MONOREPO_ROOT}" "${SAMSAR_MONOREPO_GIT_REMOTE}" \
-      "${SAMSAR_MONOREPO_DEVELOP_BRANCH}" "Samsar monorepo" 1 0
-    preflight_promotion_ref "${SAMSAR_MONOREPO_ROOT}" "${SAMSAR_MONOREPO_GIT_REMOTE}" \
-      "${SAMSAR_MONOREPO_MAIN_BRANCH}" HEAD "Samsar monorepo develop"
-    local_main="$(git -C "${SAMSAR_MONOREPO_ROOT}" rev-parse "refs/heads/${SAMSAR_MONOREPO_MAIN_BRANCH}" 2>/dev/null || true)"
-    remote_main="$(git -C "${SAMSAR_MONOREPO_ROOT}" rev-parse "refs/remotes/${SAMSAR_MONOREPO_GIT_REMOTE}/${SAMSAR_MONOREPO_MAIN_BRANCH}")"
-    if [[ -z "${local_main}" || "${local_main}" != "${remote_main}" ]]; then
-      echo "Local monorepo ${SAMSAR_MONOREPO_MAIN_BRANCH} must exactly match ${SAMSAR_MONOREPO_GIT_REMOTE}/${SAMSAR_MONOREPO_MAIN_BRANCH}." >&2
-      return 1
-    fi
+      "${SAMSAR_MONOREPO_MAIN_BRANCH}" "Samsar monorepo" 1 0
   fi
 }
 
@@ -1244,7 +1202,7 @@ commit_and_push_repo() {
 }
 
 propagate_samsar_monorepo() {
-  local setup_dir workspace_root commit_message
+  local setup_dir workspace_root commit_message current_branch
   local -a sync_args
 
   if [[ "${SYNC_SAMSAR_MONOREPO}" != "1" ]]; then
@@ -1300,14 +1258,32 @@ NODE
     --target "${SAMSAR_MONOREPO_ROOT}"
     --remote "${SAMSAR_MONOREPO_GIT_REMOTE}"
     --main-branch "${SAMSAR_MONOREPO_MAIN_BRANCH}"
-    --develop-branch "${SAMSAR_MONOREPO_DEVELOP_BRANCH}"
     --message "${commit_message}"
   )
-  if [[ "${GIT_PUSH_SAMSAR_MONOREPO}" == "1" ]]; then
-    sync_args+=(--promote)
-  fi
 
   bash "${SAMSAR_MONOREPO_SYNC_SCRIPT}" "${sync_args[@]}"
+
+  if [[ "${GIT_PUSH_SAMSAR_MONOREPO}" != "1" ]]; then
+    echo "Skipping Samsar monorepo git push."
+    return
+  fi
+
+  current_branch="$(git -C "${SAMSAR_MONOREPO_ROOT}" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
+  if [[ "${current_branch}" != "${SAMSAR_MONOREPO_MAIN_BRANCH}" ]]; then
+    echo "Samsar monorepo left ${SAMSAR_MONOREPO_MAIN_BRANCH} during sync; refusing to commit." >&2
+    return 1
+  fi
+
+  git -C "${SAMSAR_MONOREPO_ROOT}" add -A
+  if git -C "${SAMSAR_MONOREPO_ROOT}" diff --cached --quiet; then
+    echo "No Samsar monorepo changes to commit."
+  else
+    git -C "${SAMSAR_MONOREPO_ROOT}" commit -m "${commit_message}"
+  fi
+  push_current_branch_explicit "${SAMSAR_MONOREPO_ROOT}" \
+    "${SAMSAR_MONOREPO_GIT_REMOTE}" "${SAMSAR_MONOREPO_MAIN_BRANCH}" \
+    "Samsar monorepo"
+  echo "Pushed Samsar monorepo ${SAMSAR_MONOREPO_MAIN_BRANCH} to GitHub."
 }
 
 update_samsar_one_manifests
