@@ -139,8 +139,6 @@ ALLOW_PUBLISHED_VERSION="${ALLOW_PUBLISHED_VERSION:-0}"
 RESUME_PUBLISHED_VERSION="${RESUME_PUBLISHED_VERSION:-${ALLOW_PUBLISHED_VERSION}}"
 GIT_PUSH="${GIT_PUSH:-1}"
 SAMSAR_JS_GIT_REMOTE="${SAMSAR_JS_GIT_REMOTE:-origin}"
-SAMSAR_JS_RELEASE_BRANCH="${SAMSAR_JS_RELEASE_BRANCH:-}"
-GIT_PROMOTE_MAIN="${GIT_PROMOTE_MAIN:-1}"
 SAMSAR_JS_MAIN_BRANCH="${SAMSAR_JS_MAIN_BRANCH:-main}"
 GIT_PUSH_SAMSAR_ONE="${GIT_PUSH_SAMSAR_ONE:-${GIT_PUSH_SAMSAR_PROCESSOR:-1}}"
 SAMSAR_ONE_GIT_REMOTE="${SAMSAR_ONE_GIT_REMOTE:-origin}"
@@ -434,27 +432,22 @@ NODE
 }
 
 preflight_sdk_release() {
-  local current_branch
-
   if [[ "${GIT_PUSH}" != "1" ]]; then
     echo "Publishing ${PACKAGE_NAME} requires its release commit to be pushed first; GIT_PUSH must be 1." >&2
     return 1
   fi
 
   require_clean_repo "${ROOT_DIR}" "samsar-js SDK"
-  current_branch="$(git -C "${ROOT_DIR}" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
-  if [[ -z "${current_branch}" ]]; then
-    echo "samsar-js SDK is on a detached HEAD; refusing to publish." >&2
-    return 1
-  fi
-  RELEASE_BRANCH="${SAMSAR_JS_RELEASE_BRANCH:-${current_branch}}"
+  RELEASE_BRANCH="${SAMSAR_JS_MAIN_BRANCH}"
   preflight_explicit_ref_push "${ROOT_DIR}" "${SAMSAR_JS_GIT_REMOTE}" \
     "${RELEASE_BRANCH}" "samsar-js SDK" 1
+}
 
-  if [[ "${GIT_PROMOTE_MAIN}" == "1" ]]; then
-    preflight_promotion_ref "${ROOT_DIR}" "${SAMSAR_JS_GIT_REMOTE}" \
-      "${SAMSAR_JS_MAIN_BRANCH}" HEAD "samsar-js release"
-  fi
+push_sdk_main_before_deploy() {
+  echo "Pushing samsar-js HEAD to ${SAMSAR_JS_GIT_REMOTE}/${SAMSAR_JS_MAIN_BRANCH} before deployment preflights..."
+  push_current_branch_explicit "${ROOT_DIR}" "${SAMSAR_JS_GIT_REMOTE}" \
+    "${SAMSAR_JS_MAIN_BRANCH}" "samsar-js SDK"
+  echo "samsar-js ${SAMSAR_JS_MAIN_BRANCH} is available on ${SAMSAR_JS_GIT_REMOTE}."
 }
 
 preflight_samsar_one_targets() {
@@ -589,6 +582,7 @@ preflight_samsar_monorepo() {
 }
 
 preflight_sdk_release
+push_sdk_main_before_deploy
 prepare_samsar_gallery_target
 preflight_samsar_one_targets
 preflight_samsar_monorepo
@@ -680,28 +674,9 @@ commit_and_push_sdk_release() {
   push_current_branch_explicit "${ROOT_DIR}" "${SAMSAR_JS_GIT_REMOTE}" \
     "${RELEASE_BRANCH}" "samsar-js SDK"
   RELEASE_HEAD="$(git -C "${ROOT_DIR}" rev-parse HEAD)"
-
-  if [[ "${GIT_PROMOTE_MAIN}" == "1" ]]; then
-    preflight_promotion_ref "${ROOT_DIR}" "${SAMSAR_JS_GIT_REMOTE}" \
-      "${SAMSAR_JS_MAIN_BRANCH}" "${RELEASE_HEAD}" "samsar-js release"
-  fi
-}
-
-promote_sdk_release_to_main() {
-  if [[ "${GIT_PROMOTE_MAIN}" != "1" ]]; then
-    echo "Skipping samsar-js main promotion (GIT_PROMOTE_MAIN=${GIT_PROMOTE_MAIN})."
-    return
-  fi
-
-  preflight_promotion_ref "${ROOT_DIR}" "${SAMSAR_JS_GIT_REMOTE}" \
-    "${SAMSAR_JS_MAIN_BRANCH}" "${RELEASE_HEAD}" "samsar-js release"
-  git -C "${ROOT_DIR}" push "${SAMSAR_JS_GIT_REMOTE}" \
-    "${RELEASE_HEAD}:refs/heads/${SAMSAR_JS_MAIN_BRANCH}"
-  echo "Promoted samsar-js ${RELEASE_HEAD} to ${SAMSAR_JS_GIT_REMOTE}/${SAMSAR_JS_MAIN_BRANCH}."
 }
 
 commit_and_push_sdk_release
-promote_sdk_release_to_main
 
 publish_message="Published ${PACKAGE_NAME}@${PACKAGE_VERSION} to ${REGISTRY}"
 if version_is_published; then
