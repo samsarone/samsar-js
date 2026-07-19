@@ -20,7 +20,16 @@ type QueryParams = Record<string, QueryValue>;
 const DEFAULT_V2_STEP_MANUAL_STAGES = ['ai_video_generation'] as const;
 
 export interface SamsarClientOptions {
+  /**
+   * Existing Bearer credential. This remains compatible with account API keys
+   * and legacy integrations that supplied a user auth token through apiKey.
+   */
   apiKey?: string;
+  /**
+   * Logged-in user token sent as a Bearer credential.
+   * When both authToken and apiKey are provided, authToken takes precedence.
+   */
+  authToken?: string;
   appKey?: string;
   appSecret?: string;
   baseUrl?: string;
@@ -282,6 +291,21 @@ type TextToInteractiveVideoVideoModelInput =
       videoModel: ExternalNarrativeVideoModel;
     };
 
+interface TextToInteractiveVideoDraftSessionInput {
+  /** Reuse a dedicated branched draft created by createTextToInteractiveVideoDraftSession. */
+  session_id?: string;
+  /** Camel-case alias for session_id. */
+  sessionId?: string;
+  /** Legacy capital-D alias used by normal text-to-video calls. */
+  sessionID?: string;
+  /** Request-ID alias; resolves to the same VideoSession. */
+  request_id?: string;
+  /** Camel-case alias for request_id. */
+  requestId?: string;
+  /** Legacy capital-D request alias. */
+  requestID?: string;
+}
+
 /**
  * Starts singular narrative generation, branching, and branched video rendering as one workflow.
  * Image/video model keys and the requested branch depth are required.
@@ -290,7 +314,8 @@ export type TextToInteractiveVideoInput =
   Omit<ExternalNarrativeCreateSingleInput, 'video_model' | 'videoModel'> &
   ExternalNarrativeBranchingLevelInput &
   TextToInteractiveVideoImageModelInput &
-  TextToInteractiveVideoVideoModelInput;
+  TextToInteractiveVideoVideoModelInput &
+  TextToInteractiveVideoDraftSessionInput;
 
 export type TextToInteractiveVideoWorkflowStatus =
   | 'PENDING'
@@ -595,6 +620,22 @@ export interface TextToInteractiveVideoCreateResponse {
   branched_narrative_request_id?: string;
   status_url: string;
   error?: ExternalNarrativeRequestError;
+  [key: string]: unknown;
+}
+
+/** Dedicated pre-render session returned for tMochi-style interactive creators. */
+export interface TextToInteractiveVideoDraftSessionResponse {
+  request_id: string;
+  session_id: string;
+  status: 'DRAFT';
+  narrative_type: 'branched';
+  defaults: {
+    duration: number;
+    imageModel: TextToInteractiveVideoImageModel;
+    videoModel: ExternalNarrativeVideoModel;
+    numLevels: number;
+    aspectRatio: '16:9' | '9:16';
+  };
   [key: string]: unknown;
 }
 
@@ -1821,7 +1862,8 @@ export interface InteractivePublicationListResponse {
   items: InteractivePublication[];
   nextCursor: string | null;
   hasMore: boolean;
-  totalCount: number;
+  /** Present only when the server can provide an exact validated count cheaply. */
+  totalCount?: number;
   [key: string]: unknown;
 }
 
@@ -3754,7 +3796,7 @@ function buildV2StepGenerationFields(
 }
 
 function normalizeCreateVideoFromTextInput(input: CreateVideoFromTextInput): CreateVideoFromTextInput {
-  const raw = input as Record<string, unknown>;
+  const raw = input as unknown as Record<string, unknown>;
   const normalized: Record<string, unknown> = { ...input };
   const aliases: Array<[string, string[]]> = [
     ['session_id', ['session_id', 'sessionId', 'sessionID']],
@@ -4643,7 +4685,7 @@ function normalizeTextToInteractiveVideoInput(
     input as ExternalNarrativeCreateSingleInput,
     context,
   );
-  const raw = input as Record<string, unknown>;
+  const raw = input as unknown as Record<string, unknown>;
   const videoModel = normalizeExternalNarrativeVideoModelAliases(raw, context, true);
   const imageModel = normalizeTextToInteractiveVideoImageModelAliases(raw, context);
   const snakeNumLevels = normalizeExternalNarrativeBranchingLevel(
@@ -4665,12 +4707,37 @@ function normalizeTextToInteractiveVideoInput(
   if (numLevels === undefined) {
     throw new Error(`num_levels is required for ${context}`);
   }
+  const sessionAliases = [
+    'session_id',
+    'sessionId',
+    'sessionID',
+    'request_id',
+    'requestId',
+    'requestID',
+  ];
+  const suppliedSessionAliases = sessionAliases.filter((key) => (
+    Object.prototype.hasOwnProperty.call(raw, key)
+  ));
+  const sessionAliasValues = suppliedSessionAliases.map((key) => (
+    typeof raw[key] === 'string' ? raw[key].trim() : ''
+  ));
+  if (sessionAliasValues.some((value) => !value)) {
+    throw new Error('session_id/request_id must be a non-empty string when provided.');
+  }
+  if (new Set(sessionAliasValues).size > 1) {
+    throw new Error('session_id and request_id aliases must match when provided together.');
+  }
+  const sessionId = sessionAliasValues[0] || '';
+  if (sessionId.length > 200) {
+    throw new Error('session_id must not exceed 200 characters.');
+  }
 
   return {
     ...normalizedNarrative,
     image_model: imageModel,
     video_model: videoModel,
     num_levels: numLevels,
+    ...(sessionId ? { session_id: sessionId } : {}),
   };
 }
 
@@ -4746,6 +4813,7 @@ function normalizeNarrativeToVideoInput(
 
 export class SamsarClient {
   private readonly apiKey?: string;
+  private readonly authToken?: string;
   private readonly appKey?: string;
   private readonly appSecret?: string;
   private readonly baseUrl: string;
@@ -4756,6 +4824,7 @@ export class SamsarClient {
 
   constructor(options: SamsarClientOptions) {
     this.apiKey = options?.apiKey?.trim() || undefined;
+    this.authToken = options?.authToken?.trim() || undefined;
     this.appKey = options?.appKey?.trim() || undefined;
     this.appSecret = options?.appSecret?.trim() || undefined;
     this.baseUrl = trimTrailingSlash(options.baseUrl ?? DEFAULT_BASE_URL);
@@ -5132,6 +5201,17 @@ export class SamsarClient {
         input: normalizedInput,
         ...(options?.webhookUrl ? { webhookUrl: options.webhookUrl } : {}),
       },
+      options,
+    );
+  }
+
+  /** Create a non-billable branched VideoSession draft without starting generation. */
+  async createTextToInteractiveVideoDraftSession(
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<TextToInteractiveVideoDraftSessionResponse>> {
+    return this.postV2<TextToInteractiveVideoDraftSessionResponse>(
+      'text_to_interactive_video/session',
+      {},
       options,
     );
   }
@@ -7201,9 +7281,12 @@ export class SamsarClient {
 
   /**
    * Exchange a login token or verify an auth token against /users/verify_token.
+   * When this client has authToken configured—or a legacy user token supplied
+   * through apiKey—the payload may be omitted and the token is sent only in the
+   * Authorization header.
    */
   async verifyClientSession(
-    payload: VerifyClientSessionInput,
+    payload?: VerifyClientSessionInput,
     options?: SamsarRequestOptions,
   ): Promise<SamsarResult<VerifiedClientSessionResponse>> {
     const query: QueryParams = {
@@ -7217,7 +7300,7 @@ export class SamsarClient {
       query.authToken = payload.authToken;
     }
 
-    if (!query.loginToken && !query.authToken) {
+    if (!query.loginToken && !query.authToken && !this.authToken && !this.apiKey) {
       throw new Error('loginToken or authToken is required');
     }
 
@@ -8452,13 +8535,14 @@ export class SamsarClient {
   }
 
   private buildHeaders(options: SamsarRequestOptions & { method: string; body?: BodyInit | null }) {
-    const resolvedAppKey = options.appKey?.trim() || (!this.apiKey ? this.appKey : undefined);
+    const bearerCredential = this.authToken ?? this.apiKey;
+    const resolvedAppKey = options.appKey?.trim() || (!bearerCredential ? this.appKey : undefined);
     const resolvedAppSecret = options.appSecret?.trim() || this.appSecret;
     const headers: Record<string, string | undefined> = {
       Authorization: resolvedAppKey
         ? `AppKey ${resolvedAppKey}`
-        : this.apiKey
-          ? `Bearer ${this.apiKey}`
+        : bearerCredential
+          ? `Bearer ${bearerCredential}`
           : undefined,
       'Content-Type': options.body && !isFormDataBody(options.body) ? 'application/json' : undefined,
       'x-external-user-api-key': options.externalUserApiKey ?? this.externalUserApiKey,

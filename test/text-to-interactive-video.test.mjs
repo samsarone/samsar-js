@@ -101,6 +101,78 @@ test('v2-explicit interactive-video method accepts canonical snake-case input', 
   });
 });
 
+test('interactive-video drafts use their dedicated session route and can be submitted in place', async () => {
+  const calls = [];
+  const client = new SamsarClient({
+    authToken: 'user-auth-token',
+    baseUrl: 'https://processor.example/v1',
+    fetch: async (input, init) => {
+      calls.push({ input: String(input), init });
+      if (String(input).endsWith('/text_to_interactive_video/session')) {
+        return jsonResponse({
+          request_id: SESSION_ID,
+          session_id: SESSION_ID,
+          status: 'DRAFT',
+          narrative_type: 'branched',
+          defaults: {},
+        }, 201);
+      }
+      return jsonResponse(queuedResponse());
+    },
+  });
+
+  const draft = await client.createTextToInteractiveVideoDraftSession();
+  assert.equal(draft.status, 201);
+  assert.equal(draft.data.session_id, SESSION_ID);
+  await client.createTextToInteractiveVideo({
+    prompt: 'A branching workshop documentary',
+    duration: 30,
+    image_model: 'GPTIMAGE2',
+    video_model: 'RUNWAYML',
+    num_levels: 1,
+    sessionId: SESSION_ID,
+  });
+
+  assert.equal(calls[0].input, 'https://processor.example/v2/text_to_interactive_video/session');
+  assert.deepEqual(JSON.parse(calls[1].init.body).input, {
+    prompt: 'A branching workshop documentary',
+    duration: 30,
+    image_model: 'GPTIMAGE2',
+    video_model: 'RUNWAYML',
+    num_levels: 1,
+    session_id: SESSION_ID,
+  });
+});
+
+test('interactive-video accepts request_id aliases and rejects conflicting session aliases', async () => {
+  const calls = [];
+  const client = new SamsarClient({
+    apiKey: 'sdk-test-key',
+    fetch: async (input, init) => {
+      calls.push({ input: String(input), init });
+      return jsonResponse(queuedResponse());
+    },
+  });
+  const base = {
+    prompt: 'A branching story',
+    duration: 30,
+    image_model: 'SEEDREAM',
+    video_model: 'RUNWAYML',
+    num_levels: 1,
+  };
+
+  await client.createTextToInteractiveVideo({ ...base, request_id: SESSION_ID });
+  assert.equal(JSON.parse(calls[0].init.body).input.session_id, SESSION_ID);
+  await assert.rejects(
+    () => client.createTextToInteractiveVideo({
+      ...base,
+      sessionId: SESSION_ID,
+      requestId: '507f1f77bcf86cd799439099',
+    }),
+    /session_id and request_id aliases must match/,
+  );
+});
+
 test('text-to-interactive-video validates required models, levels, and aliases locally', async () => {
   let fetchCalls = 0;
   const client = new SamsarClient({

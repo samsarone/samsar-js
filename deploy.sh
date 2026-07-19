@@ -140,6 +140,7 @@ RESUME_PUBLISHED_VERSION="${RESUME_PUBLISHED_VERSION:-${ALLOW_PUBLISHED_VERSION}
 GIT_PUSH="${GIT_PUSH:-1}"
 SAMSAR_JS_GIT_REMOTE="${SAMSAR_JS_GIT_REMOTE:-origin}"
 SAMSAR_JS_MAIN_BRANCH="${SAMSAR_JS_MAIN_BRANCH:-main}"
+SAMSAR_JS_SOURCE_COMMIT_MESSAGE="${SAMSAR_JS_SOURCE_COMMIT_MESSAGE:-feat(sdk): update client bundle}"
 GIT_PUSH_SAMSAR_ONE="${GIT_PUSH_SAMSAR_ONE:-${GIT_PUSH_SAMSAR_PROCESSOR:-1}}"
 SAMSAR_ONE_GIT_REMOTE="${SAMSAR_ONE_GIT_REMOTE:-origin}"
 SYNC_SAMSAR_GALLERY="${SYNC_SAMSAR_GALLERY:-0}"
@@ -403,13 +404,32 @@ preflight_sdk_release() {
     return 1
   fi
 
-  require_clean_repo "${ROOT_DIR}" "samsar-js SDK"
   RELEASE_BRANCH="${SAMSAR_JS_MAIN_BRANCH}"
   preflight_explicit_ref_push "${ROOT_DIR}" "${SAMSAR_JS_GIT_REMOTE}" \
     "${RELEASE_BRANCH}" "samsar-js SDK" 1
 }
 
-push_sdk_main_before_deploy() {
+commit_and_push_sdk_main_before_deploy() {
+  local status_output
+
+  status_output="$(git -C "${ROOT_DIR}" status --porcelain --untracked-files=all)"
+  if [[ -n "${status_output}" ]]; then
+    echo "Validating local samsar-js changes before committing them to ${SAMSAR_JS_MAIN_BRANCH}..."
+    npm test
+    git -C "${ROOT_DIR}" add -A
+    git -C "${ROOT_DIR}" diff --cached --check
+    git -C "${ROOT_DIR}" commit -m "${SAMSAR_JS_SOURCE_COMMIT_MESSAGE}"
+  else
+    echo "No local samsar-js source changes to commit."
+  fi
+
+  status_output="$(git -C "${ROOT_DIR}" status --porcelain --untracked-files=all)"
+  if [[ -n "${status_output}" ]]; then
+    echo "samsar-js still has uncommitted files after the automatic source commit." >&2
+    printf '%s\n' "${status_output}" >&2
+    return 1
+  fi
+
   echo "Pushing samsar-js HEAD to ${SAMSAR_JS_GIT_REMOTE}/${SAMSAR_JS_MAIN_BRANCH} before deployment preflights..."
   push_current_branch_explicit "${ROOT_DIR}" "${SAMSAR_JS_GIT_REMOTE}" \
     "${SAMSAR_JS_MAIN_BRANCH}" "samsar-js SDK"
@@ -539,7 +559,7 @@ preflight_samsar_monorepo() {
 }
 
 preflight_sdk_release
-push_sdk_main_before_deploy
+commit_and_push_sdk_main_before_deploy
 prepare_samsar_gallery_target
 preflight_samsar_one_targets
 preflight_samsar_monorepo

@@ -517,6 +517,37 @@ console.log(paymentStatus.data.status);
 `createTextToInteractiveVideo` starts singular narrative generation, binary branching, and the
 branched video render through one metered API request. It posts to
 `/v2/text_to_interactive_video`; `createV2TextToInteractiveVideo` is the V2-explicit method name.
+Browser applications can authenticate a logged-in Samsar user directly; an API key is not required:
+
+```ts
+const samsar = new SamsarClient({ authToken: user.authToken });
+const session = await samsar.verifyClientSession(); // Bearer token stays out of the URL
+```
+
+Existing integrations that pass a user token through `apiKey` remain supported,
+including header-only `verifyClientSession()` calls. `authToken` is the clearer
+option for new logged-in-user integrations.
+
+Creator applications can reserve a non-billable branched `VideoSession` before
+the user enters generation settings, then submit into that same session:
+
+```ts
+const draft = await samsar.createTextToInteractiveVideoDraftSession();
+
+const queued = await samsar.createTextToInteractiveVideo({
+  session_id: draft.data.session_id,
+  prompt: 'A signal wakes beneath a silent orbital city',
+  duration: 30,
+  image_model: 'NANOBANANA2',
+  video_model: 'COSMOS3SUPERI2V',
+  num_levels: 2,
+});
+```
+
+`session_id`, `sessionId`, `sessionID`, `request_id`, `requestId`, and
+`requestID` are equivalent aliases. The API verifies that the draft belongs to
+the authenticated user, merges omitted render settings from its saved defaults,
+validates the combined input, and promotes that same session into the workflow.
 
 ```ts
 const queuedInteractiveVideo = await samsar.createTextToInteractiveVideo({
@@ -847,9 +878,9 @@ const verified = await platform.verifyClientSession({
   loginToken: login.data.loginToken,
 });
 
-// The returned authToken can be used as the SDK apiKey for external-user routes
+// The returned authToken can be used explicitly for external-user routes
 const externalClient = new SamsarClient({
-  apiKey: verified.data.authToken!,
+  authToken: verified.data.authToken!,
 });
 await externalClient.setExternalAssistantSystemPrompt({
   system_prompt: 'You are my personal launch assistant. Stay concise and actionable.',
@@ -1028,7 +1059,7 @@ const checkout = await publicClient.createV2UserRechargeCredits({
 });
 
 // After the Stripe webhook calls your redirect_url with authToken, refreshToken, and expiryDate:
-const userClient = new SamsarClient({ apiKey: authToken });
+const userClient = new SamsarClient({ authToken });
 const refreshed = await userClient.refreshV2UserToken(refreshToken);
 
 localStorage.setItem('authToken', refreshed.data.authToken);
@@ -1066,7 +1097,9 @@ Each method returns `{ data, status, headers, creditsCharged, creditsRemaining, 
 
 ## Configuration
 
-- `apiKey` (required): your Samsar API key; sent as `Authorization: Bearer <apiKey>`.
+- `apiKey` (optional): the existing Bearer credential, sent as `Authorization: Bearer <apiKey>`. It remains compatible with both Samsar API keys and legacy integrations that supplied a user auth token through this field.
+- `authToken` (optional): a logged-in user's auth token sent as `Authorization: Bearer <authToken>`; it is trimmed and takes precedence when both `authToken` and `apiKey` are provided.
+- Provide `authToken`, `apiKey`, AppKey credentials, or no credential for routes that are explicitly public.
 - `baseUrl` (optional): defaults to `https://api.samsar.one/v1`. Override for self-hosted or staging.
 - `timeoutMs` (optional): defaults to 30s.
 - `fetch` (optional): supply a fetch implementation when not available globally (e.g., Node <18).
