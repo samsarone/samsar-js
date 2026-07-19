@@ -525,7 +525,6 @@ preflight_samsar_one_targets() {
     done
 
     for repo_root in "${repo_roots[@]-}"; do
-      require_clean_repo "${repo_root}" "Canonical consumer ${repo_root}"
       current_branch="$(git -C "${repo_root}" symbolic-ref --quiet --short HEAD 2>/dev/null || true)"
       preflight_explicit_ref_push "${repo_root}" "${SAMSAR_ONE_GIT_REMOTE}" \
         "${current_branch}" "canonical consumer ${repo_root}" 1 0
@@ -1231,10 +1230,12 @@ commit_and_push_repo() {
 
   git -C "${repo_root}" add -- "$@"
 
-  if git -C "${repo_root}" diff --cached --quiet; then
+  if git -C "${repo_root}" diff --cached --quiet -- "$@"; then
     echo "No changes to commit in ${repo_root}."
   else
-    git -C "${repo_root}" commit -m "${commit_message}"
+    # Commit only dependency files managed by this deploy. A canonical
+    # consumer may have unrelated staged or unstaged source work in progress.
+    git -C "${repo_root}" commit --only -m "${commit_message}" -- "$@"
   fi
 
   push_current_branch_explicit "${repo_root}" "${remote_name}" \
