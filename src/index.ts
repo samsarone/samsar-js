@@ -44,7 +44,9 @@ export interface SamsarResult<T> {
   data: T;
   status: number;
   headers: Record<string, string>;
+  /** Parsed from the standard `x-credits-charged` response header when present. */
   creditsCharged?: number;
+  /** Parsed from the standard `x-credits-remaining` response header when present. */
   creditsRemaining?: number;
   raw: Response;
 }
@@ -173,6 +175,660 @@ export interface ExternalChatCompletionStatusResponse extends ExternalChatComple
 export interface ExternalAssistantPollingOptions extends SamsarRequestOptions {
   pollIntervalMs?: number;
   pollTimeoutMs?: number;
+}
+
+export type ExternalNarrativeInferenceModel =
+  | 'GPT5.6'
+  | 'gpt-5.6-sol'
+  | 'GEMINI3.1'
+  | 'gemini-3.1-pro'
+  | 'QWEN3.7';
+
+export type ExternalNarrativeCanonicalInferenceModel =
+  | 'gpt-5.6-sol'
+  | 'gemini-3.1-pro'
+  | 'QWEN3.7';
+
+/** Internal express-video model keys accepted by narrative and interactive-video APIs. */
+export type ExternalNarrativeVideoModel =
+  | 'RUNWAYML'
+  | 'VEO3.1I2V'
+  | 'VEO3.1I2VFAST'
+  | 'COSMOS3SUPERI2V'
+  | 'SEEDANCEI2V'
+  | 'KLINGIMGTOVID3PRO'
+  | 'KLINGIMGTOVIDTURBO'
+  | 'HAPPYHORSEI2V';
+
+/** Internal express-image model keys accepted by text-to-interactive-video. */
+export type TextToInteractiveVideoImageModel =
+  | 'GPTIMAGE2'
+  | 'NANOBANANA2'
+  | 'NANOBANANAPRO'
+  | 'SEEDREAM'
+  | 'WAN2.7PRO';
+
+export interface ExternalNarrativeCreateSingleInput {
+  prompt: string;
+  duration: number;
+  /** Omit this field to use the authenticated user's default inference model. */
+  inference_model?: ExternalNarrativeInferenceModel;
+  /** Camel-case alias for inference_model. */
+  inferenceModel?: ExternalNarrativeInferenceModel;
+  /** Controls scene speech length; omitted singular requests default to RUNWAYML. */
+  video_model?: ExternalNarrativeVideoModel;
+  /** Camel-case alias for video_model. */
+  videoModel?: ExternalNarrativeVideoModel;
+}
+
+interface ExternalNarrativeVideoModelInput {
+  /** Omit on branching requests to inherit the source singular narrative's model. */
+  video_model?: ExternalNarrativeVideoModel;
+  /** Camel-case alias for video_model. */
+  videoModel?: ExternalNarrativeVideoModel;
+}
+
+type ExternalNarrativeBranchingRequestIdInput =
+  | {
+      narrative_request_id: string;
+      /** Camel-case alias for narrative_request_id. */
+      narrativeRequestId?: string;
+    }
+  | {
+      narrative_request_id?: string;
+      /** Camel-case alias for narrative_request_id. */
+      narrativeRequestId: string;
+    };
+
+type ExternalNarrativeBranchingLevelInput =
+  | {
+      num_levels: number;
+      /** Camel-case alias for num_levels. */
+      numLevels?: number;
+    }
+  | {
+      num_levels?: number;
+      /** Camel-case alias for num_levels. */
+      numLevels: number;
+    };
+
+/** Create a binary narrative tree from a completed singular NarrativeRequest. */
+export type ExternalNarrativeCreateBranchingInput =
+  ExternalNarrativeBranchingRequestIdInput &
+  ExternalNarrativeBranchingLevelInput &
+  ExternalNarrativeVideoModelInput;
+
+type TextToInteractiveVideoImageModelInput =
+  | {
+      image_model: TextToInteractiveVideoImageModel;
+      /** Camel-case alias for image_model. */
+      imageModel?: TextToInteractiveVideoImageModel;
+    }
+  | {
+      image_model?: TextToInteractiveVideoImageModel;
+      /** Camel-case alias for image_model. */
+      imageModel: TextToInteractiveVideoImageModel;
+    };
+
+type TextToInteractiveVideoVideoModelInput =
+  | {
+      video_model: ExternalNarrativeVideoModel;
+      /** Camel-case alias for video_model. */
+      videoModel?: ExternalNarrativeVideoModel;
+    }
+  | {
+      video_model?: ExternalNarrativeVideoModel;
+      /** Camel-case alias for video_model. */
+      videoModel: ExternalNarrativeVideoModel;
+    };
+
+/**
+ * Starts singular narrative generation, branching, and branched video rendering as one workflow.
+ * Image/video model keys and the requested branch depth are required.
+ */
+export type TextToInteractiveVideoInput =
+  Omit<ExternalNarrativeCreateSingleInput, 'video_model' | 'videoModel'> &
+  ExternalNarrativeBranchingLevelInput &
+  TextToInteractiveVideoImageModelInput &
+  TextToInteractiveVideoVideoModelInput;
+
+export type TextToInteractiveVideoWorkflowStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'WAITING'
+  | 'COMPLETED'
+  | 'FAILED';
+
+export type TextToInteractiveVideoWorkflowStage =
+  | 'SINGULAR_NARRATIVE'
+  | 'BRANCHED_NARRATIVE'
+  | 'VIDEO_SESSION'
+  | 'COMPLETED'
+  | 'FAILED';
+
+export type ExternalNarrativeRequestStatus =
+  | 'PENDING'
+  | 'PROCESSING'
+  | 'COMPLETED'
+  | 'FAILED';
+
+export type ExternalNarrativeRequestType = 'create_single' | 'create_branching';
+export type ExternalNarrativeType = 'singular' | 'branched';
+
+export type ExternalNarrativeThemeJson = Record<string, unknown>;
+
+export interface ExternalNarrativeScene {
+  [key: string]: unknown;
+}
+
+export interface ExternalNarrativeSound {
+  [key: string]: unknown;
+}
+
+/** The stage-one structure accepted by a VideoSession movieResourceList. */
+export interface ExternalNarrativeResourceList {
+  scenes: ExternalNarrativeScene[];
+  sounds: ExternalNarrativeSound[];
+  [key: string]: unknown;
+}
+
+export interface ExternalNarrativeDivergence {
+  divergenceSceneIndex: number;
+  path_name: string;
+  path_description: string;
+}
+
+export interface ExternalNarrativeBranchPath {
+  childNodeId: string;
+  path_name: string;
+  path_description: string;
+}
+
+export interface ExternalNarrativeBranchPoint {
+  branchPointId: string;
+  parentNodeId: string;
+  /** One-based tree level created by this branch point. */
+  level: number;
+  /** Zero-based scene index; that scene and all preceding resources are preserved. */
+  divergenceSceneIndex: number;
+  status: 'COMPLETED';
+  /** Every completed branch point has exactly two complementary choices. */
+  divergencePaths: [ExternalNarrativeBranchPath, ExternalNarrativeBranchPath];
+}
+
+export interface ExternalNarrativeRootNode extends ExternalNarrativeResourceList {
+  nodeId: 'root';
+  parentNodeId: null;
+  childNodeIds: [] | [string, string];
+  level: 0;
+  childIndex: null;
+  branchOrdinal: null;
+  divergence: null;
+}
+
+export interface ExternalNarrativeBranchNode extends ExternalNarrativeResourceList {
+  nodeId: string;
+  parentNodeId: string;
+  childNodeIds: [] | [string, string];
+  level: number;
+  /** Zero-based sibling index. */
+  childIndex: 0 | 1;
+  /** One-based sibling number used in node IDs such as root.1 and root.2. */
+  branchOrdinal: 1 | 2;
+  divergence: ExternalNarrativeDivergence;
+}
+
+export type ExternalNarrativeTreeNode =
+  | ExternalNarrativeRootNode
+  | ExternalNarrativeBranchNode;
+
+/** The completed tree stored in a branched NarrativeRequest's movieResourceList. */
+export interface ExternalNarrativeBranchedResourceList {
+  structureType: 'branched';
+  schemaVersion: 1;
+  rootNodeId: 'root';
+  numLevels: number;
+  branchingFactor: 2;
+  branchSceneIndices: number[];
+  nodes: ExternalNarrativeTreeNode[];
+  branchPoints: ExternalNarrativeBranchPoint[];
+}
+
+/** Compact navigation metadata returned alongside a completed branching request. */
+export interface ExternalNarrativeBranchingMeta {
+  schemaVersion: 1;
+  numLevels: number;
+  branchingFactor: 2;
+  rootNodeId: 'root';
+  branchSceneIndices: number[];
+  branchPoints: ExternalNarrativeBranchPoint[];
+  leafNodeIds: string[];
+  nodeCount: number;
+}
+
+export interface ExternalNarrativeUsage {
+  inputTokens: number;
+  outputTokens: number;
+  cachedInputTokens: number;
+  reasoningTokens: number;
+  [key: string]: unknown;
+}
+
+export interface ExternalNarrativeBilling {
+  /** Both narrative endpoints bill 1.5x cumulative underlying inference spend. */
+  pricing_multiplier: 1.5;
+  underlying_cost_usd: number;
+  underlying_credits: number;
+  credits_charged: number;
+  remaining_credits: number | null;
+  usage: ExternalNarrativeUsage | null;
+  /** Present when narrative inference is included in a unified interactive-video rate. */
+  policy?: 'included_in_interactive_video_rate' | string;
+  reason?: 'included_in_interactive_video_rate' | string;
+}
+
+export interface ExternalNarrativeRequestError {
+  message: string;
+  code: string | null;
+  status: number;
+  [key: string]: unknown;
+}
+
+export interface ExternalNarrativeRequestBase {
+  request_id: string;
+  requestId: string;
+  request_type: ExternalNarrativeRequestType;
+  narrative_type: ExternalNarrativeType;
+  status: ExternalNarrativeRequestStatus;
+  poll_url: string;
+  prompt: string;
+  duration: number;
+  inference_model: ExternalNarrativeCanonicalInferenceModel;
+  video_model: ExternalNarrativeVideoModel;
+  created_at: string;
+  updated_at: string;
+}
+
+/** The HTTP 202 response returned by POST /v2/external/narrative/create_single. */
+export interface ExternalNarrativeCreateSingleResponse extends ExternalNarrativeRequestBase {
+  status: 'PENDING';
+  request_type: 'create_single';
+  narrative_type: 'singular';
+}
+
+/** The HTTP 202 response returned by POST /v2/external/narrative/create_branching. */
+export interface ExternalNarrativeCreateBranchingResponse
+  extends ExternalNarrativeRequestBase {
+  status: 'PENDING';
+  request_type: 'create_branching';
+  narrative_type: 'branched';
+  source_narrative_request_id: string;
+  num_levels: number;
+}
+
+export interface ExternalNarrativeSingularPendingResponse
+  extends ExternalNarrativeRequestBase {
+  status: 'PENDING' | 'PROCESSING';
+  request_type: 'create_single';
+  narrative_type: 'singular';
+}
+
+export interface ExternalNarrativeBranchingPendingResponse
+  extends ExternalNarrativeRequestBase {
+  status: 'PENDING' | 'PROCESSING';
+  request_type: 'create_branching';
+  narrative_type: 'branched';
+  source_narrative_request_id: string;
+  num_levels: number;
+}
+
+export type ExternalNarrativePendingResponse =
+  | ExternalNarrativeSingularPendingResponse
+  | ExternalNarrativeBranchingPendingResponse;
+
+interface ExternalNarrativeCompletedFields {
+  themeJson: ExternalNarrativeThemeJson;
+  narrativeJson: ExternalNarrativeResourceList;
+  billing: ExternalNarrativeBilling;
+  creditsCharged: number;
+  remainingCredits: number | null;
+  completed_at: string | null;
+}
+
+export interface ExternalNarrativeSingularCompletedResponse
+  extends ExternalNarrativeRequestBase, ExternalNarrativeCompletedFields {
+  status: 'COMPLETED';
+  request_type: 'create_single';
+  narrative_type: 'singular';
+  movieResourceList: ExternalNarrativeResourceList;
+}
+
+export interface ExternalNarrativeBranchingCompletedResponse
+  extends ExternalNarrativeRequestBase, ExternalNarrativeCompletedFields {
+  status: 'COMPLETED';
+  request_type: 'create_branching';
+  narrative_type: 'branched';
+  source_narrative_request_id: string;
+  num_levels: number;
+  movieResourceList: ExternalNarrativeBranchedResourceList;
+  branchingMeta: ExternalNarrativeBranchingMeta;
+}
+
+export type ExternalNarrativeCompletedResponse =
+  | ExternalNarrativeSingularCompletedResponse
+  | ExternalNarrativeBranchingCompletedResponse;
+
+interface ExternalNarrativeFailedFields {
+  error: ExternalNarrativeRequestError;
+  billing: ExternalNarrativeBilling;
+  creditsCharged: number;
+  remainingCredits: number | null;
+  failed_at: string | null;
+}
+
+export interface ExternalNarrativeSingularFailedResponse
+  extends ExternalNarrativeRequestBase, ExternalNarrativeFailedFields {
+  status: 'FAILED';
+  request_type: 'create_single';
+  narrative_type: 'singular';
+}
+
+export interface ExternalNarrativeBranchingFailedResponse
+  extends ExternalNarrativeRequestBase, ExternalNarrativeFailedFields {
+  status: 'FAILED';
+  request_type: 'create_branching';
+  narrative_type: 'branched';
+  source_narrative_request_id: string;
+  num_levels: number;
+}
+
+export type ExternalNarrativeFailedResponse =
+  | ExternalNarrativeSingularFailedResponse
+  | ExternalNarrativeBranchingFailedResponse;
+
+export type ExternalNarrativeStatusResponse =
+  | ExternalNarrativePendingResponse
+  | ExternalNarrativeCompletedResponse
+  | ExternalNarrativeFailedResponse;
+
+export interface ExternalNarrativePollingOptions extends SamsarRequestOptions {
+  pollIntervalMs?: number;
+  pollTimeoutMs?: number;
+}
+
+export interface NarrativeToVideoInput {
+  narrative_request_id?: string;
+  narrativeRequestId?: string;
+  session_id?: string;
+  sessionId?: string;
+  request_id?: string;
+  requestId?: string;
+  image_model?: string;
+  imageModel?: string;
+  video_model?: string;
+  videoModel?: string;
+  /** Narrative prompt data is inherited from the source and cannot be overridden. */
+  prompt?: never;
+  /** Narrative duration is inherited from the source and cannot be overridden. */
+  duration?: never;
+}
+
+export interface NarrativeToVideoCreateResponse {
+  request_id: string;
+  session_id: string;
+  source_narrative_request_id: string;
+  status: string;
+  [key: string]: unknown;
+}
+
+/** HTTP 202 initiation response from POST /v2/text_to_interactive_video. */
+export interface TextToInteractiveVideoCreateResponse {
+  /** The render session ID; use it with the standard v2 status endpoints. */
+  request_id: string;
+  session_id: string;
+  status: 'PENDING' | 'FAILED';
+  narrative_type: 'branched';
+  interactive_video_request_id: string;
+  workflow_status: TextToInteractiveVideoWorkflowStatus;
+  workflow_stage: TextToInteractiveVideoWorkflowStage;
+  singular_narrative_request_id?: string;
+  branched_narrative_request_id?: string;
+  status_url: string;
+  error?: ExternalNarrativeRequestError;
+  [key: string]: unknown;
+}
+
+export type NarrativeVideoBranchStatus =
+  | 'INIT'
+  | 'PENDING'
+  | 'PAUSED'
+  | 'COMPLETED'
+  | 'FAILED'
+  | 'CANCELLED'
+  | string;
+
+export interface NarrativeVideoBranchSelectionTrailItem {
+  branch_point_id?: string;
+  node_id?: string;
+  parent_node_id?: string;
+  level?: number;
+  child_index?: number;
+  branch_ordinal?: number;
+  divergence_scene_index?: number;
+  switch_at_seconds?: number;
+  path_name?: string;
+  path_description?: string;
+  [key: string]: unknown;
+}
+
+export interface NarrativeVideoBranchStageDetail {
+  status: NarrativeVideoBranchStatus;
+  pending?: boolean;
+  /** Detailed status only: number of path timeline frame items already completed. */
+  completed_items?: number;
+  /** Detailed status only: total number of path timeline frame items. */
+  total_items?: number;
+  completed_at?: string;
+  error?: string;
+  [key: string]: unknown;
+}
+
+export interface NarrativeVideoBranchTimelineItem {
+  sequence_index: number;
+  scene_index?: number;
+  /** References one canonical item in `session.layers`; the layer is not duplicated per path. */
+  layer_id?: string;
+  start_time: number;
+  end_time?: number;
+  duration?: number;
+  frame_generation: NarrativeVideoBranchStageDetail;
+  [key: string]: unknown;
+}
+
+export interface NarrativeVideoBranchAudioTimelineItem {
+  sequence_index: number;
+  scene_index?: number;
+  /** References one canonical item in `session.audioLayers`. */
+  audio_layer_id?: string;
+  connected_layer_id?: string;
+  connected_layer_index?: number;
+  start_time: number;
+  end_time?: number;
+  duration?: number;
+  connected_layer_start_time_offset?: number;
+  [key: string]: unknown;
+}
+
+export interface NarrativeVideoBranchPathStatus {
+  path_id: string;
+  leaf_node_id?: string;
+  ordinal: number;
+  is_default: boolean;
+  node_ids?: string[];
+  duration?: number;
+  branching_hint?: string;
+  branching_description?: string;
+  branch_point_id?: string;
+  divergence_scene_index?: number;
+  switch_at_seconds?: number;
+  /** Public divergence thumbnail generated from this leaf's first unique scene. */
+  thumbnail_url?: string;
+  status: NarrativeVideoBranchStatus;
+  current_stage?: 'frame_generation' | 'video_generation' | string;
+  stages: {
+    frame_generation: NarrativeVideoBranchStatus;
+    video_generation: NarrativeVideoBranchStatus;
+    [key: string]: NarrativeVideoBranchStatus;
+  };
+  stage_details: {
+    frame_generation: NarrativeVideoBranchStageDetail;
+    video_generation: NarrativeVideoBranchStageDetail;
+    [key: string]: NarrativeVideoBranchStageDetail;
+  };
+  /** Present only after this path's final video has completed successfully. */
+  result_url?: string;
+  video_link?: string;
+  remote_url?: string;
+  selection_trail: NarrativeVideoBranchSelectionTrailItem[];
+  error?: string;
+  /** Detailed status only. References canonical layer IDs with path-specific timing. */
+  timeline?: NarrativeVideoBranchTimelineItem[];
+  /** Detailed status only. References canonical audio-layer IDs with path-specific timing. */
+  audio_timeline?: NarrativeVideoBranchAudioTimelineItem[];
+  [key: string]: unknown;
+}
+
+export interface NarrativeVideoBranchChoiceOption {
+  child_node_id?: string;
+  /** Generation diagnostics only; omitted from the compact completed manifest. */
+  branch_ordinal?: number;
+  path_name?: string;
+  path_description?: string;
+  /** Final leaf paths reachable after selecting this option. */
+  leaf_path_ids?: string[];
+  [key: string]: unknown;
+}
+
+export interface NarrativeVideoBranchChoicePoint {
+  branch_point_id?: string;
+  parent_node_id?: string;
+  level?: number;
+  divergence_scene_index?: number;
+  switch_at_seconds?: number;
+  options: NarrativeVideoBranchChoiceOption[];
+  [key: string]: unknown;
+}
+
+export interface NarrativeVideoBranchSummary {
+  total_paths: number;
+  completed_paths: number;
+  pending_paths: number;
+  failed_paths: number;
+  cancelled_paths: number;
+  frame_paths_completed: number;
+  video_paths_completed: number;
+  progress_percent: number;
+  [key: string]: unknown;
+}
+
+export interface NarrativeVideoBranchTreeStatus {
+  root_node_id?: string;
+  num_levels?: number;
+  branching_factor?: number;
+  node_count?: number;
+  leaf_node_ids?: string[];
+  branch_scene_indices?: number[];
+  choice_points?: NarrativeVideoBranchChoicePoint[];
+  [key: string]: unknown;
+}
+
+export interface NarrativeVideoBranchOutputPath {
+  path_id: string;
+  leaf_node_id?: string;
+  /** Generation diagnostics only; omitted from the compact completed manifest. */
+  ordinal?: number;
+  is_default: boolean;
+  url: string;
+  thumbnail_url?: string;
+  duration?: number;
+  branching_hint?: string;
+  branching_description?: string;
+  branch_point_id?: string;
+  divergence_scene_index?: number;
+  switch_at_seconds?: number;
+  /** Generation diagnostics only; completed clients navigate with `tree.choice_points`. */
+  selection_trail?: NarrativeVideoBranchSelectionTrailItem[];
+  [key: string]: unknown;
+}
+
+/** Time base shared by completed path durations and choice-point switch offsets. */
+export interface NarrativeVideoBranchTiming {
+  origin: 'media';
+  unit: 'seconds';
+  [key: string]: unknown;
+}
+
+export type NarrativeVideoBranchOutputs =
+  | {
+      ready: false;
+      default_path_id?: string;
+      /** Final URLs are intentionally withheld until every required path is complete. */
+      default_url?: never;
+      paths?: never;
+      [key: string]: unknown;
+    }
+  | {
+      ready: true;
+      default_path_id: string;
+      default_url: string;
+      paths: NarrativeVideoBranchOutputPath[];
+      [key: string]: unknown;
+    };
+
+/**
+ * Normalized branch status manifest returned for branched VideoSessions. Pending
+ * and failed responses include diagnostic `summary` and `paths`; completed responses
+ * omit those fields and expose the sole path-aware URL list at `outputs.paths`.
+ */
+export interface NarrativeVideoBranchingStatus {
+  schema: 'branched_video_status.v1';
+  status: NarrativeVideoBranchStatus;
+  /** Generation diagnostic omitted from the compact completed manifest. */
+  is_complete?: boolean;
+  /** True only after the server has atomically finalized aggregate branch completion. */
+  finalized?: boolean;
+  completed_at?: string;
+  render_plan_version?: number;
+  default_path_id: string;
+  /** Present while generation is pending or failed; omitted after completion. */
+  summary?: NarrativeVideoBranchSummary;
+  /** Media-relative timing metadata added to the compact completed manifest. */
+  timing?: NarrativeVideoBranchTiming;
+  tree: NarrativeVideoBranchTreeStatus;
+  /** Generation diagnostics; completed clients use `outputs.paths`. */
+  paths?: NarrativeVideoBranchPathStatus[];
+  outputs: NarrativeVideoBranchOutputs;
+  [key: string]: unknown;
+}
+
+export interface NarrativeVideoBranchResult {
+  path_id: string;
+  leaf_node_id?: string | null;
+  ordinal?: number;
+  status: string;
+  result_url?: string | null;
+  video_link?: string | null;
+  remote_url?: string | null;
+  thumbnail_url?: string | null;
+  duration?: number | null;
+  branching_hint?: string | null;
+  branching_description?: string | null;
+  branch_point_id?: string | null;
+  divergence_scene_index?: number | null;
+  switch_at_seconds?: number | null;
+  selection_trail?: NarrativeVideoBranchSelectionTrailItem[];
+  error?: string | null;
+  [key: string]: unknown;
 }
 
 export interface ExternalEmbeddingRequest {
@@ -1058,6 +1714,122 @@ export interface SessionPublicationSummary {
   [key: string]: unknown;
 }
 
+/** Media-relative time base used by an interactive publication manifest. */
+export interface InteractivePublicationTiming {
+  origin: 'media';
+  unit: 'seconds';
+  [key: string]: unknown;
+}
+
+export interface InteractivePublicationChoiceOption {
+  child_node_id: string;
+  branch_ordinal?: number | null;
+  path_name?: string | null;
+  path_description?: string | null;
+  branching_hint?: string | null;
+  description?: string | null;
+  leaf_path_ids: string[];
+  [key: string]: unknown;
+}
+
+export interface InteractivePublicationChoicePoint {
+  branch_point_id: string;
+  parent_node_id: string | null;
+  level?: number | null;
+  divergence_scene_index?: number | null;
+  switch_at_seconds: number;
+  options: InteractivePublicationChoiceOption[];
+  [key: string]: unknown;
+}
+
+export interface InteractivePublicationTree {
+  root_node_id: string;
+  choice_points: InteractivePublicationChoicePoint[];
+  [key: string]: unknown;
+}
+
+/**
+ * One independently playable path in an interactive publication. Media fields
+ * follow the Schema.org VideoObject vocabulary; graph keys stay compatible
+ * with completed branched status responses.
+ */
+export interface InteractivePublicationVideoPath {
+  path_id: string;
+  leaf_node_id?: string | null;
+  ordinal?: number | null;
+  branch_point_id?: string | null;
+  divergence_scene_index?: number | null;
+  switch_at_seconds?: number | null;
+  branching_hint?: string | null;
+  description?: string | null;
+  contentUrl: string;
+  /** Public divergence thumbnail for this leaf path. */
+  thumbnailUrl: string;
+  encodingFormat: 'video/mp4';
+  /** Path duration in `manifest.timing.unit` (currently seconds). */
+  duration: number;
+  is_default: boolean;
+  [key: string]: unknown;
+}
+
+export interface InteractivePublicationManifest {
+  schema: 'interactive_video_manifest.v1';
+  default_path_id: string;
+  timing: InteractivePublicationTiming;
+  tree: InteractivePublicationTree;
+  outputs: {
+    paths: InteractivePublicationVideoPath[];
+    [key: string]: unknown;
+  };
+  [key: string]: unknown;
+}
+
+/** Optimized public render contract for a completed branched VideoSession. */
+export interface InteractivePublication {
+  id: string;
+  type: 'InteractiveVideo';
+  schema: 'interactive_publication.v1';
+  title: string;
+  description: string;
+  tags: string[];
+  creatorHandle: string;
+  slug?: string;
+  datePublished: string;
+  /** Public URL for the default/main playable leaf video. */
+  mainVideoUrl: string;
+  /** Main session poster; distinct from each path's divergence thumbnail. */
+  mainThumbnailUrl: string;
+  /** Duration of the default/main path in seconds. */
+  duration: number;
+  /** Compatibility alias for `mainThumbnailUrl`. */
+  thumbnailUrl: string;
+  aspectRatio: string | null;
+  inLanguage: string | null;
+  hasSubtitles: boolean | null;
+  manifest: InteractivePublicationManifest;
+  [key: string]: unknown;
+}
+
+export interface ListInteractivePublicationsOptions extends SamsarRequestOptions {
+  /** Page size. The public API caps this at 200. */
+  limit?: number;
+  /** Opaque publication cursor returned as `nextCursor` by the previous page. */
+  cursor?: string;
+}
+
+export interface InteractivePublicationListResponse {
+  items: InteractivePublication[];
+  nextCursor: string | null;
+  hasMore: boolean;
+  totalCount: number;
+  [key: string]: unknown;
+}
+
+export interface InteractivePublicationDetailResponse {
+  publication: InteractivePublication;
+  [key: string]: unknown;
+}
+
 export interface SessionPublicationSessionSummary {
   id?: string | null;
   session_id?: string | null;
@@ -1072,7 +1844,8 @@ export interface SessionPublicationResponse {
   created?: boolean;
   revoked?: boolean;
   publication_id?: string | null;
-  publication?: SessionPublicationSummary | null;
+  /** Linear sessions return SessionPublicationSummary; branched sessions return InteractivePublication. */
+  publication?: SessionPublicationSummary | InteractivePublication | null;
   session?: SessionPublicationSessionSummary | null;
   sessionId?: string;
   session_id?: string;
@@ -1940,7 +2713,16 @@ export interface GlobalStatusResponse {
   has_subtitles?: boolean | null;
   result_language?: string | null;
   thumbnail_url?: string | null;
+  /** Linear/legacy output list. Completed branched responses use `branching.outputs.paths`. */
   result_urls?: string[];
+  narrative_type?: 'singular' | 'branched' | string;
+  source_narrative_request_id?: string | null;
+  render_plan_version?: number | null;
+  default_path_id?: string | null;
+  /** Pending/failed branch diagnostics; omitted from completed branched responses. */
+  branch_results?: NarrativeVideoBranchResult[];
+  /** Normalized progress or completed interactive-media manifest for branched sessions. */
+  branching?: NarrativeVideoBranchingStatus;
   videoLink?: string | null;
   remoteURL?: string | null;
   expressGenerationStatus?: unknown;
@@ -2298,6 +3080,19 @@ export interface VideoStatusDetailedSession {
   inputPrompt?: string | null;
   generationType?: string | null;
   provider?: string | null;
+  narrativeType?: 'singular' | 'branched' | string;
+  sourceNarrativeRequestId?: string | null;
+  renderPlanVersion?: number | null;
+  defaultBranchPathId?: string | null;
+  branchingMeta?: ExternalNarrativeBranchingMeta | Record<string, unknown> | null;
+  branchResults?: NarrativeVideoBranchResult[];
+  /**
+   * Pending/failed branch paths with canonical layer/audio timeline references.
+   * Completed detailed responses omit this duplicate and use top-level `branching`.
+   */
+  branching?: NarrativeVideoBranchingStatus;
+  /** @deprecated Prefer `branching.paths`; retained for backward compatibility. */
+  branchRenderPaths?: Array<Record<string, unknown>>;
   currentStage?: V2StepVideoStage | string;
   previewStage?: V2StepVideoStage | string;
   completedStages?: Array<V2StepVideoStage | string>;
@@ -2313,12 +3108,12 @@ export interface VideoStatusDetailedSession {
 }
 
 export interface GlobalStatusDetailedResponse extends GlobalStatusResponse {
-  status_detail_schema?: 'video_session_preview.v1' | string;
+  status_detail_schema?: 'video_session_preview.v1' | 'interactive_video_manifest.v1' | string;
   session?: VideoStatusDetailedSession | null;
 }
 
 export interface ExternalStatusDetailedResponse extends ExternalStatusResponse {
-  status_detail_schema?: 'video_session_preview.v1' | string;
+  status_detail_schema?: 'video_session_preview.v1' | 'interactive_video_manifest.v1' | string;
   session?: VideoStatusDetailedSession | null;
 }
 
@@ -3565,6 +4360,390 @@ function normalizeSessionPublicationInput(
   return normalized;
 }
 
+const EXTERNAL_NARRATIVE_INFERENCE_MODEL_ALIASES: Record<
+  string,
+  ExternalNarrativeCanonicalInferenceModel
+> = {
+  GPT56: 'gpt-5.6-sol',
+  GPT56SOL: 'gpt-5.6-sol',
+  GEMINI31: 'gemini-3.1-pro',
+  GEMINI31PRO: 'gemini-3.1-pro',
+  GEMINI31PROPREVIEW: 'gemini-3.1-pro',
+  GEMINI3PRO: 'gemini-3.1-pro',
+  GEMINI3PROPREVIEW: 'gemini-3.1-pro',
+  GOOGLEGEMINI31PRO: 'gemini-3.1-pro',
+  GOOGLEGEMINI3PRO: 'gemini-3.1-pro',
+  QWEN37: 'QWEN3.7',
+  QWEN37MAX: 'QWEN3.7',
+  QWEN37PLUS: 'QWEN3.7',
+  ALIBABAQWEN37: 'QWEN3.7',
+  ALIBABACLOUDQWEN37: 'QWEN3.7',
+  DASHSCOPEQWEN37: 'QWEN3.7',
+};
+
+function normalizeExternalNarrativeInferenceModel(
+  value: unknown,
+  context = 'createExternalSingleNarrative',
+): ExternalNarrativeCanonicalInferenceModel | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  if (typeof value !== 'string') {
+    throw new Error(`inference_model must be a string for ${context}`);
+  }
+
+  const token = value.trim().toUpperCase().replace(/[^A-Z0-9]+/g, '');
+  if (!token) {
+    return undefined;
+  }
+  const model = EXTERNAL_NARRATIVE_INFERENCE_MODEL_ALIASES[token];
+  if (!model) {
+    throw new Error(
+      `inference_model must be one of: GPT5.6, GEMINI3.1, QWEN3.7 for ${context}`,
+    );
+  }
+  return model;
+}
+
+const EXTERNAL_NARRATIVE_VIDEO_MODELS: readonly ExternalNarrativeVideoModel[] = [
+  'RUNWAYML',
+  'VEO3.1I2V',
+  'VEO3.1I2VFAST',
+  'COSMOS3SUPERI2V',
+  'SEEDANCEI2V',
+  'KLINGIMGTOVID3PRO',
+  'KLINGIMGTOVIDTURBO',
+  'HAPPYHORSEI2V',
+];
+
+const TEXT_TO_INTERACTIVE_VIDEO_IMAGE_MODELS: readonly TextToInteractiveVideoImageModel[] = [
+  'GPTIMAGE2',
+  'NANOBANANA2',
+  'NANOBANANAPRO',
+  'SEEDREAM',
+  'WAN2.7PRO',
+];
+
+function normalizeExternalNarrativeVideoModelValue(
+  value: unknown,
+  context: string,
+): ExternalNarrativeVideoModel {
+  const normalized = typeof value === 'string' ? value.trim() : '';
+  if (!normalized) {
+    throw new Error(`video_model must be a non-empty string for ${context}`);
+  }
+  if (!EXTERNAL_NARRATIVE_VIDEO_MODELS.includes(
+    normalized as ExternalNarrativeVideoModel,
+  )) {
+    throw new Error(
+      `video_model must be one of: ${EXTERNAL_NARRATIVE_VIDEO_MODELS.join(', ')} ` +
+      `for ${context}`,
+    );
+  }
+  return normalized as ExternalNarrativeVideoModel;
+}
+
+function normalizeExternalNarrativeVideoModelAliases(
+  input: Record<string, unknown>,
+  context: string,
+  required = false,
+): ExternalNarrativeVideoModel | undefined {
+  const hasSnakeModel = Object.prototype.hasOwnProperty.call(input, 'video_model');
+  const hasCamelModel = Object.prototype.hasOwnProperty.call(input, 'videoModel');
+  const snakeModel = hasSnakeModel
+    ? normalizeExternalNarrativeVideoModelValue(input.video_model, context)
+    : undefined;
+  const camelModel = hasCamelModel
+    ? normalizeExternalNarrativeVideoModelValue(input.videoModel, context)
+    : undefined;
+  if (snakeModel && camelModel && snakeModel !== camelModel) {
+    throw new Error('video_model was provided with conflicting alias values.');
+  }
+  const videoModel = snakeModel ?? camelModel;
+  if (required && !videoModel) {
+    throw new Error(`video_model is required for ${context}`);
+  }
+  return videoModel;
+}
+
+function normalizeTextToInteractiveVideoImageModelAliases(
+  input: Record<string, unknown>,
+  context: string,
+): TextToInteractiveVideoImageModel {
+  const normalizeValue = (value: unknown): TextToInteractiveVideoImageModel => {
+    const normalized = typeof value === 'string' ? value.trim() : '';
+    if (!normalized) {
+      throw new Error(`image_model must be a non-empty string for ${context}`);
+    }
+    if (!TEXT_TO_INTERACTIVE_VIDEO_IMAGE_MODELS.includes(
+      normalized as TextToInteractiveVideoImageModel,
+    )) {
+      throw new Error(
+        `image_model must be one of: ${TEXT_TO_INTERACTIVE_VIDEO_IMAGE_MODELS.join(', ')} ` +
+        `for ${context}`,
+      );
+    }
+    return normalized as TextToInteractiveVideoImageModel;
+  };
+
+  const hasSnakeModel = Object.prototype.hasOwnProperty.call(input, 'image_model');
+  const hasCamelModel = Object.prototype.hasOwnProperty.call(input, 'imageModel');
+  const snakeModel = hasSnakeModel ? normalizeValue(input.image_model) : undefined;
+  const camelModel = hasCamelModel ? normalizeValue(input.imageModel) : undefined;
+  if (snakeModel && camelModel && snakeModel !== camelModel) {
+    throw new Error('image_model was provided with conflicting alias values.');
+  }
+  const imageModel = snakeModel ?? camelModel;
+  if (!imageModel) {
+    throw new Error(`image_model is required for ${context}`);
+  }
+  return imageModel;
+}
+
+function normalizeExternalNarrativeCreateSingleInput(
+  input: ExternalNarrativeCreateSingleInput,
+  context = 'createExternalSingleNarrative',
+): Record<string, unknown> {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new Error(`input must be an object for ${context}`);
+  }
+
+  const prompt = typeof input.prompt === 'string' ? input.prompt.trim() : '';
+  if (!prompt) {
+    throw new Error(`prompt is required for ${context}`);
+  }
+  if (prompt.length > 4000) {
+    throw new Error(`prompt must not exceed 4000 characters for ${context}`);
+  }
+
+  const duration = Number(input.duration);
+  if (!Number.isFinite(duration) || duration < 10 || duration > 240) {
+    throw new Error(
+      `duration must be a number between 10 and 240 seconds for ${context}`,
+    );
+  }
+
+  const snakeModel = normalizeExternalNarrativeInferenceModel(input.inference_model, context);
+  const camelModel = normalizeExternalNarrativeInferenceModel(input.inferenceModel, context);
+  if (snakeModel && camelModel && snakeModel !== camelModel) {
+    throw new Error('inference_model was provided with conflicting alias values.');
+  }
+  const inferenceModel = snakeModel ?? camelModel;
+  const videoModel = normalizeExternalNarrativeVideoModelAliases(
+    input as unknown as Record<string, unknown>,
+    context,
+  );
+
+  return {
+    prompt,
+    duration,
+    ...(inferenceModel ? { inference_model: inferenceModel } : {}),
+    ...(videoModel ? { video_model: videoModel } : {}),
+  };
+}
+
+const EXTERNAL_NARRATIVE_MAX_BRANCHING_LEVELS = 6;
+
+function normalizeExternalNarrativeBranchingRequestId(
+  value: unknown,
+): string | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  if (typeof value !== 'string') {
+    throw new Error(
+      'narrative_request_id must be a string for createExternalBranchingNarrative',
+    );
+  }
+  return value.trim() || undefined;
+}
+
+function normalizeExternalNarrativeBranchingLevel(
+  value: unknown,
+  context = 'createExternalBranchingNarrative',
+): number | undefined {
+  if (value === undefined || value === null || value === '') {
+    return undefined;
+  }
+  const isNumericPrimitive = typeof value === 'number' || (
+    typeof value === 'string' && /^\d+$/.test(value.trim())
+  );
+  const normalized = isNumericPrimitive ? Number(value) : Number.NaN;
+  if (
+    !Number.isSafeInteger(normalized) ||
+    normalized < 1 ||
+    normalized > EXTERNAL_NARRATIVE_MAX_BRANCHING_LEVELS
+  ) {
+    throw new Error(
+      `num_levels must be an integer between 1 and ${EXTERNAL_NARRATIVE_MAX_BRANCHING_LEVELS} ` +
+      `for ${context}`,
+    );
+  }
+  return normalized;
+}
+
+function normalizeExternalNarrativeCreateBranchingInput(
+  input: ExternalNarrativeCreateBranchingInput,
+): Record<string, unknown> {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new Error('input must be an object for createExternalBranchingNarrative');
+  }
+
+  const snakeRequestId = normalizeExternalNarrativeBranchingRequestId(
+    input.narrative_request_id,
+  );
+  const camelRequestId = normalizeExternalNarrativeBranchingRequestId(
+    input.narrativeRequestId,
+  );
+  if (snakeRequestId && camelRequestId && snakeRequestId !== camelRequestId) {
+    throw new Error('narrative_request_id was provided with conflicting alias values.');
+  }
+  const narrativeRequestId = snakeRequestId ?? camelRequestId;
+  if (!narrativeRequestId || !/^[a-f\d]{24}$/i.test(narrativeRequestId)) {
+    throw new Error(
+      'a valid 24-character narrative_request_id is required for ' +
+      'createExternalBranchingNarrative',
+    );
+  }
+
+  const snakeNumLevels = normalizeExternalNarrativeBranchingLevel(input.num_levels);
+  const camelNumLevels = normalizeExternalNarrativeBranchingLevel(input.numLevels);
+  if (
+    snakeNumLevels !== undefined &&
+    camelNumLevels !== undefined &&
+    snakeNumLevels !== camelNumLevels
+  ) {
+    throw new Error('num_levels was provided with conflicting alias values.');
+  }
+  const numLevels = snakeNumLevels ?? camelNumLevels;
+  if (numLevels === undefined) {
+    throw new Error('num_levels is required for createExternalBranchingNarrative');
+  }
+  const videoModel = normalizeExternalNarrativeVideoModelAliases(
+    input as unknown as Record<string, unknown>,
+    'createExternalBranchingNarrative',
+  );
+
+  return {
+    narrative_request_id: narrativeRequestId,
+    num_levels: numLevels,
+    ...(videoModel ? { video_model: videoModel } : {}),
+  };
+}
+
+function normalizeTextToInteractiveVideoInput(
+  input: TextToInteractiveVideoInput,
+): Record<string, unknown> {
+  const context = 'createTextToInteractiveVideo';
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new Error(`input must be an object for ${context}`);
+  }
+
+  const normalizedNarrative = normalizeExternalNarrativeCreateSingleInput(
+    input as ExternalNarrativeCreateSingleInput,
+    context,
+  );
+  const raw = input as Record<string, unknown>;
+  const videoModel = normalizeExternalNarrativeVideoModelAliases(raw, context, true);
+  const imageModel = normalizeTextToInteractiveVideoImageModelAliases(raw, context);
+  const snakeNumLevels = normalizeExternalNarrativeBranchingLevel(
+    raw.num_levels,
+    context,
+  );
+  const camelNumLevels = normalizeExternalNarrativeBranchingLevel(
+    raw.numLevels,
+    context,
+  );
+  if (
+    snakeNumLevels !== undefined &&
+    camelNumLevels !== undefined &&
+    snakeNumLevels !== camelNumLevels
+  ) {
+    throw new Error('num_levels was provided with conflicting alias values.');
+  }
+  const numLevels = snakeNumLevels ?? camelNumLevels;
+  if (numLevels === undefined) {
+    throw new Error(`num_levels is required for ${context}`);
+  }
+
+  return {
+    ...normalizedNarrative,
+    image_model: imageModel,
+    video_model: videoModel,
+    num_levels: numLevels,
+  };
+}
+
+function normalizeNarrativeToVideoInput(
+  input: NarrativeToVideoInput,
+): Record<string, unknown> {
+  if (!input || typeof input !== 'object' || Array.isArray(input)) {
+    throw new Error('input must be an object for createExternalVideoFromNarrative');
+  }
+
+  const raw = input as Record<string, unknown>;
+  if (
+    Object.prototype.hasOwnProperty.call(raw, 'prompt')
+    || Object.prototype.hasOwnProperty.call(raw, 'duration')
+  ) {
+    throw new Error(
+      'prompt and duration cannot be provided to createExternalVideoFromNarrative; ' +
+      'they are inherited from the source NarrativeRequest',
+    );
+  }
+
+  const requestIdAliases = [
+    'narrative_request_id',
+    'narrativeRequestId',
+    'session_id',
+    'sessionId',
+    'request_id',
+    'requestId',
+  ];
+  const suppliedRequestIdAliases = requestIdAliases.filter((key) => (
+    Object.prototype.hasOwnProperty.call(raw, key)
+  ));
+  const requestIds = suppliedRequestIdAliases.map((key) => (
+    typeof raw[key] === 'string' ? raw[key].trim() : ''
+  ));
+  if (requestIds.some((value) => !value)) {
+    throw new Error('NarrativeRequest id aliases must be non-empty strings when provided.');
+  }
+  const distinctRequestIds = [...new Set(requestIds)];
+  if (distinctRequestIds.length > 1) {
+    throw new Error('NarrativeRequest id aliases were provided with conflicting values.');
+  }
+  const narrativeRequestId = distinctRequestIds[0];
+  if (!narrativeRequestId || !/^[a-f\d]{24}$/i.test(narrativeRequestId)) {
+    throw new Error(
+      'a valid 24-character narrative_request_id is required for ' +
+      'createExternalVideoFromNarrative',
+    );
+  }
+
+  const readModel = (snakeKey: string, camelKey: string, label: string) => {
+    const values = [raw[snakeKey], raw[camelKey]]
+      .filter((value) => value !== undefined)
+      .map((value) => typeof value === 'string' ? value.trim() : '');
+    if (values.some((value) => !value)) {
+      throw new Error(`${label} must be a non-empty string when provided.`);
+    }
+    const distinctValues = [...new Set(values)];
+    if (distinctValues.length > 1) {
+      throw new Error(`${snakeKey} was provided with conflicting alias values.`);
+    }
+    return distinctValues[0];
+  };
+
+  const imageModel = readModel('image_model', 'imageModel', 'image_model');
+  const videoModel = readModel('video_model', 'videoModel', 'video_model');
+  return {
+    narrative_request_id: narrativeRequestId,
+    ...(imageModel ? { image_model: imageModel } : {}),
+    ...(videoModel ? { video_model: videoModel } : {}),
+  };
+}
+
 export class SamsarClient {
   private readonly apiKey?: string;
   private readonly appKey?: string;
@@ -3925,6 +5104,33 @@ export class SamsarClient {
       {
         input: normalizedInput,
         webhookUrl: options?.webhookUrl,
+      },
+      options,
+    );
+  }
+
+  /**
+   * Start narrative generation, binary branching, and branched rendering as one request.
+   * The returned request_id is the video session ID used by the standard v2 status APIs.
+   */
+  async createTextToInteractiveVideo(
+    input: TextToInteractiveVideoInput,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<TextToInteractiveVideoCreateResponse>> {
+    return this.createV2TextToInteractiveVideo(input, options);
+  }
+
+  /** POST /v2/text_to_interactive_video. */
+  async createV2TextToInteractiveVideo(
+    input: TextToInteractiveVideoInput,
+    options?: V2RequestOptions,
+  ): Promise<SamsarResult<TextToInteractiveVideoCreateResponse>> {
+    const normalizedInput = normalizeTextToInteractiveVideoInput(input);
+    return this.postV2<TextToInteractiveVideoCreateResponse>(
+      'text_to_interactive_video',
+      {
+        input: normalizedInput,
+        ...(options?.webhookUrl ? { webhookUrl: options.webhookUrl } : {}),
       },
       options,
     );
@@ -5295,6 +6501,51 @@ export class SamsarClient {
     return this.revokePublication(input, options);
   }
 
+  /**
+   * List completed, publicly renderable interactive-video publications.
+   * This public read endpoint does not require authentication.
+   */
+  async listInteractivePublications(
+    options?: ListInteractivePublicationsOptions,
+  ): Promise<SamsarResult<InteractivePublicationListResponse>> {
+    const {
+      limit,
+      cursor,
+      query,
+      ...requestOptions
+    } = options ?? {};
+
+    return this.get<InteractivePublicationListResponse>('interactive_publications', {
+      ...requestOptions,
+      query: {
+        ...(query ?? {}),
+        limit,
+        cursor,
+      },
+    });
+  }
+
+  /**
+   * Fetch one publicly renderable interactive-video publication by publication ID.
+   * This public read endpoint does not require authentication.
+   */
+  async getInteractivePublication(
+    publicationId: string,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<InteractivePublicationDetailResponse>> {
+    const normalizedPublicationId = typeof publicationId === 'string'
+      ? publicationId.trim()
+      : '';
+    if (!normalizedPublicationId) {
+      throw new Error('publicationId is required for getInteractivePublication');
+    }
+
+    return this.get<InteractivePublicationDetailResponse>(
+      `interactive_publications/${encodeURIComponent(normalizedPublicationId)}`,
+      options,
+    );
+  }
+
   /** Search Samsar Gallery publications using semantic, lexical, and engagement ranking. */
   async searchGallery(
     payload: GallerySearchRequest,
@@ -6028,7 +7279,11 @@ export class SamsarClient {
       request_id: normalizedRequestId,
       session_id: normalizedSessionId,
       result_url: normalizedResultUrl,
-      result_urls: resultUrls.length ? resultUrls : (data as any).result_urls,
+      ...(resultUrls.length
+        ? { result_urls: resultUrls }
+        : Object.prototype.hasOwnProperty.call(data, 'result_urls')
+          ? { result_urls: (data as any).result_urls }
+          : {}),
       status: (data as any).status || 'PENDING',
     };
 
@@ -6364,6 +7619,222 @@ export class SamsarClient {
     return this.createV2ExternalChatCompletionAndPoll(payload, options);
   }
 
+  /** Queue the stage-one create_single narrative workflow. */
+  async createExternalSingleNarrative(
+    input: ExternalNarrativeCreateSingleInput,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalNarrativeCreateSingleResponse>> {
+    return this.createV2ExternalSingleNarrative(input, options);
+  }
+
+  /** Queue POST /v2/external/narrative/create_single and return its HTTP 202 request id. */
+  async createV2ExternalSingleNarrative(
+    input: ExternalNarrativeCreateSingleInput,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalNarrativeCreateSingleResponse>> {
+    return this.post<ExternalNarrativeCreateSingleResponse>(
+      this.buildV2Url('external/narrative/create_single'),
+      normalizeExternalNarrativeCreateSingleInput(input),
+      options,
+    );
+  }
+
+  /** Queue a binary narrative tree from a completed singular NarrativeRequest. */
+  async createExternalBranchingNarrative(
+    input: ExternalNarrativeCreateBranchingInput,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalNarrativeCreateBranchingResponse>> {
+    return this.createV2ExternalBranchingNarrative(input, options);
+  }
+
+  /** Queue POST /v2/external/narrative/create_branching and return its HTTP 202 request id. */
+  async createV2ExternalBranchingNarrative(
+    input: ExternalNarrativeCreateBranchingInput,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalNarrativeCreateBranchingResponse>> {
+    return this.post<ExternalNarrativeCreateBranchingResponse>(
+      this.buildV2Url('external/narrative/create_branching'),
+      normalizeExternalNarrativeCreateBranchingInput(input),
+      options,
+    );
+  }
+
+  /** Read the latest state of a queued external narrative request. */
+  async getExternalNarrativeStatus(
+    requestId: string,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalNarrativeStatusResponse>> {
+    return this.getV2ExternalNarrativeStatus(requestId, options);
+  }
+
+  /** Read GET /v2/external/narrative/status for one authenticated user's request. */
+  async getV2ExternalNarrativeStatus(
+    requestId: string,
+    options?: SamsarRequestOptions,
+  ): Promise<SamsarResult<ExternalNarrativeStatusResponse>> {
+    const normalizedRequestId = String(requestId || '').trim();
+    if (!normalizedRequestId) {
+      throw new Error('requestId is required');
+    }
+    return this.get<ExternalNarrativeStatusResponse>(
+      this.buildV2Url('external/narrative/status'),
+      {
+        ...(options ?? {}),
+        query: { ...(options?.query ?? {}), request_id: normalizedRequestId },
+      },
+    );
+  }
+
+  /** Poll an external narrative until its stage-one artifacts are ready. */
+  async pollExternalNarrative(
+    requestId: string,
+    options?: ExternalNarrativePollingOptions,
+  ): Promise<SamsarResult<ExternalNarrativeCompletedResponse>> {
+    return this.pollV2ExternalNarrative(requestId, options);
+  }
+
+  /** Poll PENDING/PROCESSING narrative states until completion, failure, or timeout. */
+  async pollV2ExternalNarrative(
+    requestId: string,
+    options?: ExternalNarrativePollingOptions,
+  ): Promise<SamsarResult<ExternalNarrativeCompletedResponse>> {
+    const normalizedRequestId = String(requestId || '').trim();
+    if (!normalizedRequestId) {
+      throw new Error('requestId is required');
+    }
+
+    const pollIntervalMs = clampPositiveInteger(options?.pollIntervalMs, 2000, 250, 30000);
+    const pollTimeoutMs = clampPositiveInteger(
+      options?.pollTimeoutMs,
+      30 * 60 * 1000,
+      1000,
+      2 * 60 * 60 * 1000,
+    );
+    const {
+      pollIntervalMs: _pollIntervalMs,
+      pollTimeoutMs: _pollTimeoutMs,
+      ...requestOptions
+    } = options ?? {};
+    const startedAt = Date.now();
+    let lastTransientError: unknown = null;
+    let lastStatus: 'PENDING' | 'PROCESSING' = 'PENDING';
+
+    while (Date.now() - startedAt < pollTimeoutMs) {
+      if (requestOptions.signal?.aborted) {
+        throw new SamsarRequestError('External narrative polling was aborted', {
+          url: this.buildV2Url('external/narrative/status'),
+          headers: {},
+        });
+      }
+
+      try {
+        const result = await this.getV2ExternalNarrativeStatus(
+          normalizedRequestId,
+          requestOptions,
+        );
+        const status = String(result.data?.status || '').toUpperCase();
+        if (status === 'COMPLETED') {
+          return result as SamsarResult<ExternalNarrativeCompletedResponse>;
+        }
+        if (status === 'FAILED') {
+          const failed = result.data as ExternalNarrativeFailedResponse;
+          throw new SamsarRequestError(
+            failed.error?.message || 'External narrative request failed',
+            {
+              status: failed.error?.status || 500,
+              body: failed,
+              headers: result.headers,
+              url: failed.poll_url || this.buildV2Url('external/narrative/status'),
+              creditsCharged: result.creditsCharged ?? failed.creditsCharged,
+              creditsRemaining: result.creditsRemaining ?? failed.remainingCredits ?? undefined,
+            },
+          );
+        }
+        if (status === 'PENDING' || status === 'PROCESSING') {
+          lastStatus = status;
+        }
+        lastTransientError = null;
+      } catch (error) {
+        if (error instanceof SamsarRequestError) {
+          const terminalStatus = String(
+            (error.body as ExternalNarrativeStatusResponse | undefined)?.status || '',
+          ).toUpperCase();
+          if (
+            terminalStatus === 'FAILED' ||
+            (error.status !== undefined &&
+              error.status < 500 &&
+              error.status !== 408 &&
+              error.status !== 429)
+          ) {
+            throw error;
+          }
+        }
+        lastTransientError = error;
+      }
+
+      try {
+        await waitForPollingInterval(pollIntervalMs, requestOptions.signal);
+      } catch (error) {
+        if (requestOptions.signal?.aborted) {
+          throw new SamsarRequestError('External narrative polling was aborted', {
+            url: this.buildV2Url('external/narrative/status'),
+            headers: {},
+          });
+        }
+        throw error;
+      }
+    }
+
+    const detail = lastTransientError instanceof Error
+      ? ` Last polling error: ${lastTransientError.message}`
+      : '';
+    throw new SamsarRequestError(
+      `External narrative polling timed out after ${pollTimeoutMs}ms.${detail}`,
+      {
+        status: 504,
+        body: { request_id: normalizedRequestId, status: lastStatus },
+        headers: {},
+        url: this.buildV2Url('external/narrative/status'),
+      },
+    );
+  }
+
+  /** Queue and poll create_single using short-lived HTTP requests. */
+  async createExternalSingleNarrativeAndPoll(
+    input: ExternalNarrativeCreateSingleInput,
+    options?: ExternalNarrativePollingOptions,
+  ): Promise<SamsarResult<ExternalNarrativeSingularCompletedResponse>> {
+    return this.createV2ExternalSingleNarrativeAndPoll(input, options);
+  }
+
+  /** Queue and poll POST /v2/external/narrative/create_single through completion. */
+  async createV2ExternalSingleNarrativeAndPoll(
+    input: ExternalNarrativeCreateSingleInput,
+    options?: ExternalNarrativePollingOptions,
+  ): Promise<SamsarResult<ExternalNarrativeSingularCompletedResponse>> {
+    const queued = await this.createV2ExternalSingleNarrative(input, options);
+    const completed = await this.pollV2ExternalNarrative(queued.data.request_id, options);
+    return completed as SamsarResult<ExternalNarrativeSingularCompletedResponse>;
+  }
+
+  /** Queue and poll create_branching using short-lived HTTP requests. */
+  async createExternalBranchingNarrativeAndPoll(
+    input: ExternalNarrativeCreateBranchingInput,
+    options?: ExternalNarrativePollingOptions,
+  ): Promise<SamsarResult<ExternalNarrativeBranchingCompletedResponse>> {
+    return this.createV2ExternalBranchingNarrativeAndPoll(input, options);
+  }
+
+  /** Queue and poll POST /v2/external/narrative/create_branching through completion. */
+  async createV2ExternalBranchingNarrativeAndPoll(
+    input: ExternalNarrativeCreateBranchingInput,
+    options?: ExternalNarrativePollingOptions,
+  ): Promise<SamsarResult<ExternalNarrativeBranchingCompletedResponse>> {
+    const queued = await this.createV2ExternalBranchingNarrative(input, options);
+    const completed = await this.pollV2ExternalNarrative(queued.data.request_id, options);
+    return completed as SamsarResult<ExternalNarrativeBranchingCompletedResponse>;
+  }
+
   /**
    * Create raw embedding vectors through the deployed Samsar processor.
    * This calls POST /v2/external/embeddings and is intended for Docker provider fallback.
@@ -6481,6 +7952,42 @@ export class SamsarClient {
       payload,
       options,
     );
+  }
+
+  /**
+   * Start the media pipeline from an existing completed singular or branched NarrativeRequest.
+   * Prompt generation is skipped. The image model may be selected at render time; an explicitly
+   * supplied video model must match the source narrative's video model.
+   */
+  async createExternalVideoFromNarrative(
+    input: NarrativeToVideoInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<NarrativeToVideoCreateResponse>> {
+    return this.createV2ExternalVideoFromNarrative(input, options);
+  }
+
+  /** POST /v2/external/video/narrative_to_video. */
+  async createV2ExternalVideoFromNarrative(
+    input: NarrativeToVideoInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<NarrativeToVideoCreateResponse>> {
+    const normalizedInput = normalizeNarrativeToVideoInput(input);
+    return this.requestV2ExternalVideo<NarrativeToVideoCreateResponse>(
+      'narrative_to_video',
+      {
+        input: normalizedInput,
+        ...(options?.webhookUrl ? { webhookUrl: options.webhookUrl } : {}),
+      },
+      options,
+    );
+  }
+
+  /** Alias retained for callers that name the source before the output. */
+  async createExternalNarrativeVideo(
+    input: NarrativeToVideoInput,
+    options?: { webhookUrl?: string } & SamsarRequestOptions,
+  ): Promise<SamsarResult<NarrativeToVideoCreateResponse>> {
+    return this.createV2ExternalVideoFromNarrative(input, options);
   }
 
   /**

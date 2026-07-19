@@ -512,6 +512,220 @@ const paymentStatus = await samsar.getPaymentStatus({
 console.log(paymentStatus.data.status);
 ```
 
+## Unified text-to-interactive video
+
+`createTextToInteractiveVideo` starts singular narrative generation, binary branching, and the
+branched video render through one metered API request. It posts to
+`/v2/text_to_interactive_video`; `createV2TextToInteractiveVideo` is the V2-explicit method name.
+
+```ts
+const queuedInteractiveVideo = await samsar.createTextToInteractiveVideo({
+  prompt: 'A midnight train arrives and the viewer chooses which stranger to follow',
+  duration: 60,
+  inference_model: 'QWEN3.7',
+  image_model: 'SEEDREAM',
+  video_model: 'COSMOS3SUPERI2V',
+  num_levels: 2,
+}, {
+  idempotencyKey: 'midnight-train-interactive-v1',
+  webhookUrl: 'https://example.com/webhooks/video',
+});
+
+console.log(queuedInteractiveVideo.status); // 202
+console.log(queuedInteractiveVideo.data.workflow_stage); // SINGULAR_NARRATIVE
+
+// request_id is the final branched VideoSession ID, not the workflow-record ID.
+const detailed = await samsar.getV2StatusDetailed(
+  queuedInteractiveVideo.data.request_id,
+);
+console.log(
+  detailed.data.status,
+  detailed.data.branching ?? detailed.data.session?.branching,
+);
+```
+
+The image and video models are required. Supported image keys are `GPTIMAGE2`, `NANOBANANA2`,
+`NANOBANANAPRO`, `SEEDREAM`, and `WAN2.7PRO`. Supported video keys are `RUNWAYML`, `VEO3.1I2V`,
+`VEO3.1I2VFAST`, `COSMOS3SUPERI2V`, `SEEDANCEI2V`, `KLINGIMGTOVID3PRO`,
+`KLINGIMGTOVIDTURBO`, and `HAPPYHORSEI2V`. The selected video model is used while constructing
+speech text, so each scene's speech fits that model's supported clip duration. `num_levels` must be
+an integer from 1 through 6 (and cannot exceed the generated narrative's available branch points).
+
+This unified workflow does not charge separate singular or branching narrative fees. It is billed
+at the selected video model's full express-video credits-per-second rate over cumulative unique
+branch duration: shared layers count once, while each distinct post-branch layer is included once.
+The HTTP request returns after the workflow is accepted; use the normal v2 status or detailed-status
+methods with `request_id` until every branch output is ready.
+
+## External narrative generation
+
+The external narrative API performs narrative inference only. It creates no video session and generates no image, audio, or video media. A completed singular response contains validated `themeJson`, raw validated `narrativeJson`, and a linear `movieResourceList` compatible with the corresponding VideoSession field. A completed branching response returns a node-based narrative tree that can later be rendered with `createExternalVideoFromNarrative`. Supply the intended render `video_model` during singular generation so the generated scene speech respects that model's duration limits.
+
+`createExternalSingleNarrative` returns HTTP 202 with a request ID. Use the status helper directly or let the SDK poll the short-lived status requests for you:
+
+```ts
+const queuedNarrative = await samsar.createExternalSingleNarrative({
+  prompt: 'A grounded documentary about Bangkok waking before sunrise',
+  duration: 60,
+  inference_model: 'GEMINI3.1',
+  video_model: 'COSMOS3SUPERI2V',
+});
+
+console.log(queuedNarrative.status); // 202
+console.log(queuedNarrative.data.request_id);
+
+const narrative = await samsar.pollExternalNarrative(
+  queuedNarrative.data.request_id,
+  { pollIntervalMs: 2_000, pollTimeoutMs: 30 * 60 * 1_000 },
+);
+
+console.log(narrative.data.themeJson);
+console.log(narrative.data.narrativeJson);
+console.log(narrative.data.movieResourceList);
+console.log(narrative.data.billing.credits_charged);
+```
+
+The combined helper queues and polls the same request:
+
+```ts
+const narrative = await samsar.createExternalSingleNarrativeAndPoll({
+  prompt: 'A concise product origin story told across cinematic workshop scenes',
+  duration: 30,
+  inference_model: 'GPT5.6',
+  video_model: 'RUNWAYML',
+});
+```
+
+### Branching narratives
+
+Create a binary, choice-driven narrative tree from a completed singular request with
+`createExternalBranchingNarrative`. The source must belong to the authenticated user and must be a
+successful `create_single` NarrativeRequest. The branch request clones the source narrative data;
+it does not modify the source or create a VideoSession or any image, audio, or video media.
+
+```ts
+const branched = await samsar.createExternalBranchingNarrativeAndPoll({
+  narrative_request_id: narrative.data.request_id,
+  num_levels: 1,
+  // Optional. When supplied, it must match the singular source model.
+  video_model: narrative.data.video_model,
+});
+
+console.log(branched.data.source_narrative_request_id);
+console.log(branched.data.movieResourceList.rootNodeId); // root
+console.log(branched.data.branchingMeta.leafNodeIds); // ['root.1', 'root.2']
+
+for (const node of branched.data.movieResourceList.nodes) {
+  console.log(node.nodeId, node.scenes, node.sounds);
+}
+```
+
+The non-blocking form returns HTTP 202 and uses the same status polling helpers:
+
+```ts
+const queuedBranch = await samsar.createV2ExternalBranchingNarrative({
+  narrativeRequestId: narrative.data.request_id,
+  numLevels: 2,
+  videoModel: narrative.data.video_model,
+});
+
+const branched = await samsar.pollV2ExternalNarrative(
+  queuedBranch.data.request_id,
+);
+```
+
+Each node contains a complete `scenes` and `sounds` resource list. `root` is the unchanged source;
+the binary children use deterministic path IDs (`root.1`, `root.2`, `root.1.1`, and so on).
+`branchSceneIndices` contains zero-based divergence scene indexes, and `branchPoints` contains the
+two path names and descriptions selected at each choice. Narrow a generic polling response with
+`narrative_type === 'branched'` before accessing the tree-specific fields in TypeScript.
+
+Render either a completed singular or branched request without rerunning prompt generation:
+
+```ts
+const queuedVideo = await samsar.createExternalVideoFromNarrative({
+  narrative_request_id: branched.data.request_id,
+  image_model: 'GPTIMAGE2',
+  video_model: branched.data.video_model,
+});
+
+const videoStatus = await samsar.getV2ExternalVideoStatus(
+  queuedVideo.data.request_id,
+);
+
+const branching = videoStatus.data.branching;
+if (branching && !branching.outputs.ready) {
+  console.log(branching.summary?.progress_percent);
+  for (const path of branching.paths ?? []) {
+    console.log(path.path_id, path.stages.frame_generation, path.stages.video_generation);
+  }
+}
+
+// Final URLs are published atomically only after every required path succeeds.
+if (branching?.outputs.ready) {
+  console.log(branching.timing); // { origin: 'media', unit: 'seconds' }
+  console.log(branching.outputs.default_url);
+  for (const output of branching.outputs.paths) {
+    console.log(output.path_id, output.url, output.duration, output.is_default);
+  }
+}
+
+// Usage is carried in standard response headers, outside the JSON body.
+console.log(videoStatus.creditsCharged, videoStatus.creditsRemaining);
+```
+
+For a branched source, shared media assets are generated once and every leaf gets its own frames
+and final video. While generation is pending or failed, `branching.summary` and `branching.paths`
+expose aggregate and per-path diagnostics. Once every required path completes, the response switches
+to a compact interactive-media manifest: `result_url` is the default-path convenience URL and
+`branching.outputs.paths` is the sole path-aware video list. Completed branched responses omit the
+duplicate `result_urls` and `branch_results` fields. Choice-point `switch_at_seconds` values and path
+durations share the media-relative seconds time base declared by `branching.timing`.
+
+Branched `/status` and `/status_detailed` response bodies do not contain billing or credit details.
+Read `creditsCharged` and `creditsRemaining` from `SamsarResult`; the SDK parses them from the
+`x-credits-charged` and `x-credits-remaining` headers.
+
+Detailed polling adds path timing without duplicating the canonical media assets:
+
+```ts
+const detailed = await samsar.getV2ExternalVideoStatusDetailed(
+  queuedVideo.data.request_id,
+);
+
+const session = detailed.data.session;
+const branchStatus = session?.branching;
+const defaultPath = branchStatus?.paths?.find((path) => path.is_default);
+
+if (session && defaultPath) {
+  const layersById = new Map((session.layers ?? []).map((layer) => [layer.id, layer]));
+  const playableLayers = (defaultPath.timeline ?? []).flatMap((item) => {
+    const layer = layersById.get(item.layer_id);
+    return layer ? [{ ...layer, startTime: item.start_time, endTime: item.end_time }] : [];
+  });
+  console.log(playableLayers);
+}
+```
+
+Before completion, `session.layers` and `session.audioLayers` are deduplicated canonical asset pools
+for branched sessions. Reconstruct a preview branch in `sequence_index` order using
+`session.branching.paths[].timeline` and `audio_timeline`; do not play the canonical pools in array
+order. After completion, `/status_detailed` uses the same top-level compact `branching` manifest as
+`/status` and a small `session` envelope; it omits duplicate `session.branching`, generation layers,
+and diagnostic timelines. At a choice point, `tree.choice_points[].options[].leaf_path_ids` maps an
+option to compatible final output paths, while `switch_at_seconds` identifies the media seek time.
+`prompt` and `duration` cannot be supplied to this route because both are inherited from the source
+`NarrativeRequest`. The image model can be selected at render time. An explicitly supplied
+`video_model` must match the model stored by the source narrative; omit it to inherit that model.
+
+- `duration` must be between 10 and 240 seconds.
+- Supported model aliases are `GPT5.6`, `GEMINI3.1`, and `QWEN3.7`; the SDK sends their canonical API names. Omit `inference_model` to use the authenticated user's configured default.
+- Standalone singular requests accept the express video model keys listed above and default to `RUNWAYML` when omitted. A branching request inherits the singular source's model; if `video_model` or `videoModel` is present, the API rejects it unless it matches the source.
+- `num_levels` must be an integer from 1 through 6. A deployment can configure a lower maximum, and it must also be less than the source scene count.
+- The V2-explicit method names are `createV2ExternalSingleNarrative`, `createV2ExternalBranchingNarrative`, `getV2ExternalNarrativeStatus`, `pollV2ExternalNarrative`, `createV2ExternalSingleNarrativeAndPoll`, and `createV2ExternalBranchingNarrativeAndPoll`.
+- Polling accepts both `PENDING` and `PROCESSING`. The default timeout is 30 minutes and can be raised to two hours with `pollTimeoutMs`. A terminal `FAILED` response throws `SamsarRequestError` and retains the response body and credit details.
+- Only one metered narrative request runs for a user at a time. Accepted usage is settled in full, so `remainingCredits` can be negative when final inference usage exceeds the starting balance.
+
 ## External users
 
 Use the external-user surface when many platform users share one central Samsar account and API key.
@@ -662,6 +876,7 @@ Video model support notes:
 - Main video methods and external-user methods accept the same generated outro and footer parameters. The API can resolve either internal session ids or external `extreq_...` ids on repeated video routes, so client code can keep using `translateVideo`, `joinVideos`, `addSubtitles`, `removeSubtitles`, `addVideoOutroImage`, `updateVideoOutroImage`, and `updateVideoFooterImage`; the explicit external variants are available when you want to call `/external_users/*` directly. Do not strip the `extreq_` prefix.
 - Completed video status, latest-version, and completed-session list responses expose `has_subtitles` and `result_language` when the session metadata is available.
 - `publishPublication`, `editPublication`, and `revokePublication` manage public feed publications for completed sessions through free `/publications/*` endpoints. They work with account API keys, customer sub-account API keys, and client auth tokens when the session belongs to the authenticated actor.
+- Branched sessions return an `InteractivePublication` from those management methods. It exposes `mainVideoUrl` and the session-level `mainThumbnailUrl`, while every manifest path includes its public video URL, divergence thumbnail, branch hint/description, and media-relative switch timing. `listInteractivePublications` and `getInteractivePublication` read the unauthenticated public catalog and its compact render graph.
 - Text-to-video and image-list video pricing use the same per-rendered-second rates for standard express models: `VEO3.1I2V` is 60 credits/sec, `VEO3.1I2VFAST` is 36 credits/sec, `COSMOS3SUPERI2V` is 20 credits/sec, `SEEDANCEI2V` is 30 credits/sec, `KLINGIMGTOVID3PRO` is 36 credits/sec, `KLINGIMGTOVIDTURBO` is 36 credits/sec, `HAPPYHORSEI2V` is 36 credits/sec, and `RUNWAYML` is 30 credits/sec. Image-list narrator avatar generation adds 4 credits/sec when `add_narrator_avatar` is true; express CTA generation adds 1 credit/sec when `express_cta_generation` is true.
 - Standard express video models expose a per-second pricing distribution through `EXPRESS_VIDEO_PRICING_DISTRIBUTION_PER_SECOND_BY_MODEL`: pipeline 4, inference 4, image gen/edit 2, speech 2, music 2, effects and lipsync 2, video as the model-specific remainder, and `optionalAddons.express_cta_generation` at 1 credit/sec.
 
@@ -669,10 +884,10 @@ Upcoming `/v2` omni route adapters:
 - `/v2` is additive; `/v1` is not deprecated.
 - `createV2VideoFromText`, `createV2VideoFromImageList`, `assignV2ImageTitle`, `translateV2Video`, `cloneV2Video`, `regenerateV2VideoAvatar`, `updateV2VideoOutroImage`, `updateV2VideoFooterImage`, `addV2VideoOutroImage`, `getV2Status`, `getV2StatusDetailed`, `getV2Credits`, `listV2Requests`, and `createV2Session` call the new omni route surface.
 - Step-controlled video helpers include `createV2StepVideoFromText`, `createV2StepTextToVideo`, `createV2StepVideoFromImage`, `createV2StepImageToVideo`, `getV2StepVideoStatus`, `getV2StepVideoStatusDetailed`, and `processNextV2StepVideo`. They default to 1-step express rendering by sending `auto_render_full_video: true` and `manual_step_stages: []`; pass `{ stepMode: 'two_step' }` or `manual_step_stages: ['ai_video_generation']` to require an explicit second-step approval before image-to-video generation.
-- External inference helpers include `createV2ExternalChatCompletion` for synchronous billed chat/vision inference and `createV2ExternalChatCompletionAsync` plus `getV2ExternalChatCompletionStatus`, `pollV2ExternalChatCompletion`, or `createV2ExternalChatCompletionAndPoll` for long-running polling requests. The assistant-named aliases are `createV2ExternalAssistantCompletionAsync`, `getV2ExternalAssistantCompletionStatus`, `pollV2ExternalAssistantCompletion`, and `createV2ExternalAssistantCompletionAndPoll`. Synchronous helpers reject async polling controls at compile time; use the dedicated async helpers instead. `createV2ExternalModeration` performs no-charge API-key moderation checks, and `listV2ExternalAudioVoices` reads no-charge provider voice catalogs.
+- External inference helpers include `createV2ExternalChatCompletion` for synchronous billed chat/vision inference and `createV2ExternalChatCompletionAsync` plus `getV2ExternalChatCompletionStatus`, `pollV2ExternalChatCompletion`, or `createV2ExternalChatCompletionAndPoll` for long-running polling requests. The assistant-named aliases are `createV2ExternalAssistantCompletionAsync`, `getV2ExternalAssistantCompletionStatus`, `pollV2ExternalAssistantCompletion`, and `createV2ExternalAssistantCompletionAndPoll`. Narrative helpers are `createV2ExternalSingleNarrative`, `createV2ExternalBranchingNarrative`, `getV2ExternalNarrativeStatus`, `pollV2ExternalNarrative`, `createV2ExternalSingleNarrativeAndPoll`, and `createV2ExternalBranchingNarrativeAndPoll`; `createV2TextToInteractiveVideo` runs narrative generation, branching, and rendering as one workflow. Synchronous helpers reject async polling controls at compile time; use the dedicated async helpers instead. `createV2ExternalModeration` performs no-charge API-key moderation checks, and `listV2ExternalAudioVoices` reads no-charge provider voice catalogs.
 - Programmatic user helpers include `createV2ExternalUser`, `createV2UserRechargeCredits`, `refreshV2UserToken`, `createV2UserAppKey`, `refreshV2UserAppKey`, `getV2UserCredits`, `getV2UserUsageLogs`, and `getV2UserPaymentStatus`.
 - Omit `externalUser` for internal account billing, pass `externalUser` to scope an external user with the account API key, or authenticate the client directly with an external-user auth token/API key. V2 external users can be referenced by `unique_key`; if `unique_key` is omitted during creation, the server uses `external_user_id` as the key.
-- Detailed status adapters return the normal status payload plus a normalized `session` preview shape with `layers`, `audioLayers`, `globalAudioLayers`, and `globalVideos`. Layer timing uses `startTime` and `endTime` so clients can preview generated images, scene clips, and speech before final render completion.
+- Before completion, detailed status adapters return the normal status payload plus a normalized `session` preview shape with `layers`, `audioLayers`, `globalAudioLayers`, and `globalVideos`. Layer timing uses `startTime` and `endTime` so clients can preview generated images, scene clips, and speech. Completed branched sessions switch to `interactive_video_manifest.v1` with a compact session envelope and top-level `branching.outputs.paths`.
 
 ```ts
 const queuedAssistant = await platform.createV2ExternalAssistantCompletionAsync({
@@ -840,6 +1055,8 @@ Each method returns `{ data, status, headers, creditsCharged, creditsRemaining, 
 
 ## Billing notes
 
+- Unified `text_to_interactive_video` requests include singular and branching narrative inference without separate narrative charges. The workflow charges the chosen video model's full express-video rate over cumulative unique branch-layer duration, counting shared layers once.
+- External narrative requests bill 1.5x cumulative underlying inference spend. `create_single` includes theme generation, narrative generation, validation retries, and stage-one enrichment. `create_branching` includes every divergence-planning call, child-tree generation call, and validation retry across all providers and tree levels. Status polling itself is not billed.
 - Assistant completions are billed from actual request usage. Samsar measures the processed input and generated output, converts usage to credits using the standard `100 credits = $1` rule, and applies a `2.5x` assistant multiplier so text-only and multimodal sessions are priced consistently.
 - Embedding endpoints (`createEmbedding`, `updateEmbedding`, `searchAgainstEmbedding`, `similarToEmbedding`) are billed by input tokens at $1 per million tokens. `deleteEmbeddings` does not consume tokens.
 - URL-based embedding creation (`createEmbedding` with `urls`, or `createEmbeddingFromUrl`) supports `levels` 1-3, defaults to 2, caps total crawled pages at 50 per request, bills actual Firecrawl usage with a `2.5x` crawl multiplier, and then bills the embedding phase with a separate flat `2.5x` multiplier.
