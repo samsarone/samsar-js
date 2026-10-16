@@ -4904,6 +4904,14 @@ export class SamsarClient {
     );
   }
 
+  /**
+   * Manually mint credits for an external user and the owning platform account.
+   * Requires a signed-in administrator's user auth token via the client's authToken option.
+   * The target must belong to that administrator's account; credits must be a positive safe integer.
+   * Customer/parent API keys, APP_KEY credentials, external-user tokens, and customer
+   * sub-account keys are not authorized. For paid self-service top-ups, use
+   * createV2CreditsRecharge instead.
+   */
   async grantV2Credits(
     payload: number | V2CreditsGrantRequest,
     options?: V2RequestOptions,
@@ -7058,7 +7066,12 @@ export class SamsarClient {
   }
 
   /**
-   * Manually grant credits to a specific external user while also crediting the shared platform account.
+   * Manually mint credits for a specific external user and the shared platform account.
+   * Requires a signed-in administrator's user auth token via the client's authToken option.
+   * The target must belong to that administrator's account; credits must be a positive safe integer.
+   * Customer/parent API keys, APP_KEY credentials, external-user tokens, and customer
+   * sub-account keys are not authorized. Use the external-user credits/recharge flow
+   * for paid self-service top-ups.
    */
   async grantExternalUserCredits(
     externalUser: ExternalUserIdentity,
